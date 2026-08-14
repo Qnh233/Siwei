@@ -247,9 +247,16 @@ export const MindMapView: React.FC = () => {
     setFeedback,
   })
 
+  const startEditingWithText = React.useCallback((nodeId: string, text: string) => {
+    // 先开启编辑会话，再写入首字符，保证整次直接输入可以一次撤销。
+    startEditing(nodeId)
+    updateNodeText(nodeId, text)
+  }, [startEditing, updateNodeText])
+
   const handleKeyDown = useMindMapKeyboardShortcuts({
     selectedNodeId,
     runAction,
+    startEditingWithText,
     closeContextMenu,
     clearEditing,
     selectNode,

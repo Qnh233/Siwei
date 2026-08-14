@@ -4,6 +4,7 @@ import type { NodeMenuAction } from '../../document/NodeContextMenu'
 interface UseMindMapKeyboardShortcutsParams {
   selectedNodeId: string | null
   runAction: (nodeId: string, action: NodeMenuAction) => void
+  startEditingWithText: (nodeId: string, text: string) => void
   closeContextMenu: () => void
   clearEditing: () => void
   selectNode: (nodeId: string | null) => void
@@ -15,9 +16,19 @@ const isTextInputTarget = (target: EventTarget | null): boolean => {
   return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="menu"], [role="dialog"]'))
 }
 
+const isDirectTextInput = (event: React.KeyboardEvent): boolean => {
+  return event.key.length === 1
+    && event.key !== ' '
+    && !event.ctrlKey
+    && !event.metaKey
+    && !event.altKey
+    && !event.nativeEvent.isComposing
+}
+
 export function useMindMapKeyboardShortcuts({
   selectedNodeId,
   runAction,
+  startEditingWithText,
   closeContextMenu,
   clearEditing,
   selectNode,
@@ -54,6 +65,12 @@ export function useMindMapKeyboardShortcuts({
       return
     }
 
+    if (isDirectTextInput(event)) {
+      event.preventDefault()
+      startEditingWithText(selectedNodeId, event.key)
+      return
+    }
+
     switch (event.key) {
       case 'Enter':
         event.preventDefault()
@@ -70,5 +87,5 @@ export function useMindMapKeyboardShortcuts({
         selectNode(null)
         break
     }
-  }, [clearEditing, closeContextMenu, runAction, selectNode, selectedNodeId])
+  }, [clearEditing, closeContextMenu, runAction, selectNode, selectedNodeId, startEditingWithText])
 }

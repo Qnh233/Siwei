@@ -211,6 +211,27 @@ describe('MindMapView', () => {
     expect(screen.queryByDisplayValue('导图重命名')).not.toBeInTheDocument()
   })
 
+  it('starts inline editing from direct printable input on a selected node', () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByTestId('flow-node-node-2'))
+    fireEvent.keyDown(screen.getByTestId('react-flow'), { key: 'k', ctrlKey: true })
+    expect(screen.queryByRole('textbox', { name: '编辑节点文本' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByTestId('react-flow'), { key: 'A', shiftKey: true })
+
+    const input = screen.getByRole('textbox', { name: '编辑节点文本' })
+    expect(input).toHaveValue('A')
+    expect(useDocumentStore.getState().currentDoc?.root.children[1].text).toBe('A')
+
+    fireEvent.change(input, { target: { value: 'AB' } })
+    fireEvent.blur(input)
+    expect(useDocumentStore.getState().currentDoc?.root.children[1].text).toBe('AB')
+
+    act(() => useDocumentStore.getState().undo())
+    expect(useDocumentStore.getState().currentDoc?.root.children[1].text).toBe('第二节点')
+  })
+
   it('renders inline content in non-editing mind map nodes', () => {
     useDocumentStore.setState((state) => ({
       currentDoc: state.currentDoc
