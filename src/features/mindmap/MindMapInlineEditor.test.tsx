@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MindMapInlineEditor } from './MindMapInlineEditor'
+import { useSettingsStore } from '../settings/settingsStore'
+import { DEFAULT_SETTINGS } from '../../types/settings'
 
 function renderEditorWithParentHandlers(value = '第二节点') {
   const parentPointerDown = vi.fn()
@@ -8,6 +10,8 @@ function renderEditorWithParentHandlers(value = '第二节点') {
   const parentClick = vi.fn()
   const parentKeyDown = vi.fn()
   const onDeleteEmpty = vi.fn()
+  const onInsertChild = vi.fn()
+  const onIndent = vi.fn()
 
   render(
     <div
@@ -23,8 +27,8 @@ function renderEditorWithParentHandlers(value = '第二节点') {
         onCancel={vi.fn()}
         onDeleteEmpty={onDeleteEmpty}
         onInsertSibling={vi.fn()}
-        onInsertChild={vi.fn()}
-        onIndent={vi.fn()}
+        onInsertChild={onInsertChild}
+        onIndent={onIndent}
         onOutdent={vi.fn()}
         onMoveUp={vi.fn()}
         onMoveDown={vi.fn()}
@@ -40,10 +44,16 @@ function renderEditorWithParentHandlers(value = '第二节点') {
     parentClick,
     parentKeyDown,
     onDeleteEmpty,
+    onInsertChild,
+    onIndent,
   }
 }
 
 describe('MindMapInlineEditor', () => {
+  beforeEach(() => {
+    useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
+  })
+
   it('keeps mouse positioning events inside the editor input', () => {
     const { input, parentPointerDown, parentMouseDown, parentClick } = renderEditorWithParentHandlers()
 
@@ -75,5 +85,25 @@ describe('MindMapInlineEditor', () => {
     expect(deleteAllowed).toBe(true)
     expect(parentKeyDown).not.toHaveBeenCalled()
     expect(onDeleteEmpty).not.toHaveBeenCalled()
+  })
+
+  it('uses the same customized mind map binding while inline editing', () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        keybindings: {
+          overrides: {
+            'mindmap.insertChild': ['Tab'],
+            'mindmap.indent': ['Mod+]'],
+          },
+        },
+      },
+    })
+    const { input, onInsertChild, onIndent } = renderEditorWithParentHandlers()
+
+    fireEvent.keyDown(input, { key: 'Tab' })
+
+    expect(onInsertChild).toHaveBeenCalledTimes(1)
+    expect(onIndent).not.toHaveBeenCalled()
   })
 })

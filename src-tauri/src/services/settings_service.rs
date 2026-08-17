@@ -89,6 +89,7 @@ mod tests {
             theme: ThemeMode::Dark,
             focus_mode: true,
             experimental_mind_map_layout_engine: true,
+            keybindings: Default::default(),
             agent: Default::default(),
         };
 
@@ -125,6 +126,21 @@ mod tests {
         assert_eq!(settings.theme, ThemeMode::System);
         assert!(!settings.focus_mode);
         assert!(!settings.experimental_mind_map_layout_engine);
+        assert!(settings.keybindings.overrides.is_empty());
+    }
+
+    #[test]
+    fn persists_keybinding_overrides() {
+        let dir = tempdir().unwrap();
+        let mut settings = AppSettings::default();
+        settings
+            .keybindings
+            .overrides
+            .insert("mindmap.insertChild".to_string(), vec!["Tab".to_string()]);
+
+        update_settings(dir.path(), settings.clone()).unwrap();
+
+        assert_eq!(get_settings(dir.path()).unwrap(), settings);
     }
 
     #[test]

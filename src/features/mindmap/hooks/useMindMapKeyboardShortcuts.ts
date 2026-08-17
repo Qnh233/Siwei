@@ -1,4 +1,6 @@
 import React from 'react'
+import { findKeybindingCommand } from '../../../app/keybindings/keybindingMatcher'
+import { useSettingsStore } from '../../settings/settingsStore'
 import type { NodeMenuAction } from '../../document/NodeContextMenu'
 
 interface UseMindMapKeyboardShortcutsParams {
@@ -45,23 +47,39 @@ export function useMindMapKeyboardShortcuts({
   }, [closeContextMenu])
 
   return React.useCallback((event: React.KeyboardEvent) => {
-    if (isTextInputTarget(event.target) || !selectedNodeId) return
+    if (isTextInputTarget(event.target) || !selectedNodeId || event.nativeEvent.isComposing) return
 
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    const command = findKeybindingCommand(
+      'mindmap',
+      event,
+      useSettingsStore.getState().settings.keybindings.overrides,
+    )
+    if (command) {
       event.preventDefault()
-      runAction(selectedNodeId, 'toggleChecked')
-      return
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === 'ArrowUp') {
-      event.preventDefault()
-      runAction(selectedNodeId, 'moveUp')
-      return
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === 'ArrowDown') {
-      event.preventDefault()
-      runAction(selectedNodeId, 'moveDown')
+      event.stopPropagation()
+      switch (command.id) {
+        case 'mindmap.insertSibling':
+          runAction(selectedNodeId, 'insertSibling')
+          return
+        case 'mindmap.insertChild':
+          runAction(selectedNodeId, 'insertChild')
+          return
+        case 'mindmap.indent':
+          runAction(selectedNodeId, 'indent')
+          return
+        case 'mindmap.outdent':
+          runAction(selectedNodeId, 'outdent')
+          return
+        case 'mindmap.moveUp':
+          runAction(selectedNodeId, 'moveUp')
+          return
+        case 'mindmap.moveDown':
+          runAction(selectedNodeId, 'moveDown')
+          return
+        case 'mindmap.toggleChecked':
+          runAction(selectedNodeId, 'toggleChecked')
+          return
+      }
       return
     }
 
@@ -71,21 +89,11 @@ export function useMindMapKeyboardShortcuts({
       return
     }
 
-    switch (event.key) {
-      case 'Enter':
-        event.preventDefault()
-        runAction(selectedNodeId, event.shiftKey ? 'insertChild' : 'insertSibling')
-        break
-      case 'Tab':
-        event.preventDefault()
-        runAction(selectedNodeId, event.shiftKey ? 'outdent' : 'indent')
-        break
-      case 'Escape':
-        event.preventDefault()
-        closeContextMenu()
-        clearEditing()
-        selectNode(null)
-        break
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeContextMenu()
+      clearEditing()
+      selectNode(null)
     }
   }, [clearEditing, closeContextMenu, runAction, selectNode, selectedNodeId, startEditingWithText])
 }

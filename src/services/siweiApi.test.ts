@@ -170,6 +170,7 @@ describe('siweiApi', () => {
       theme: 'dark',
       focusMode: true,
       experimentalMindMapLayoutEngine: true,
+      keybindings: { overrides: {} },
       agent: {
         enabled: false,
         provider: 'openai-compatible',

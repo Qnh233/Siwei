@@ -1,4 +1,6 @@
 import React from 'react'
+import { findKeybindingCommand } from '../../app/keybindings/keybindingMatcher'
+import { useSettingsStore } from '../settings/settingsStore'
 
 interface MindMapInlineEditorProps {
   value: string
@@ -57,42 +59,41 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
     event.stopPropagation()
     if (isComposingRef.current) return
 
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    const command = findKeybindingCommand(
+      'mindmap',
+      event,
+      useSettingsStore.getState().settings.keybindings.overrides,
+    )
+    if (command) {
       event.preventDefault()
-      onToggleChecked()
-      return
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === 'ArrowUp') {
-      event.preventDefault()
-      onMoveUp()
-      return
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key === 'ArrowDown') {
-      event.preventDefault()
-      onMoveDown()
-      return
+      switch (command.id) {
+        case 'mindmap.insertSibling':
+          onChange(draftValue)
+          onInsertSibling()
+          return
+        case 'mindmap.insertChild':
+          onChange(draftValue)
+          onInsertChild()
+          return
+        case 'mindmap.indent':
+          onIndent()
+          return
+        case 'mindmap.outdent':
+          onOutdent()
+          return
+        case 'mindmap.moveUp':
+          onMoveUp()
+          return
+        case 'mindmap.moveDown':
+          onMoveDown()
+          return
+        case 'mindmap.toggleChecked':
+          onToggleChecked()
+          return
+      }
     }
 
     switch (event.key) {
-      case 'Enter':
-        event.preventDefault()
-        onChange(draftValue)
-        if (event.shiftKey) {
-          onInsertChild()
-        } else {
-          onInsertSibling()
-        }
-        break
-      case 'Tab':
-        event.preventDefault()
-        if (event.shiftKey) {
-          onOutdent()
-        } else {
-          onIndent()
-        }
-        break
       case 'Backspace':
         if (draftValue.length === 0) {
           event.preventDefault()

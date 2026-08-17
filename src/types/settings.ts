@@ -1,3 +1,5 @@
+import type { KeybindingSettings } from '../app/keybindings/keybindingTypes'
+
 export type DefaultViewMode = 'outline' | 'mindmap' | 'split'
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type AgentThinkingLevel = 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
@@ -20,6 +22,7 @@ export interface AppSettings {
   theme: ThemeMode
   focusMode: boolean
   experimentalMindMapLayoutEngine: boolean
+  keybindings: KeybindingSettings
   agent: AgentSettings
 }
 
@@ -31,6 +34,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   focusMode: false,
   experimentalMindMapLayoutEngine: false,
+  keybindings: { overrides: {} },
   agent: {
     enabled: false,
     provider: 'openai-compatible',

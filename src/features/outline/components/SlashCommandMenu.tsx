@@ -1,5 +1,14 @@
 import React from 'react'
+import { displayKeybinding, getEffectiveBindings } from '../../../app/keybindings/keybindingMatcher'
+import type { KeybindingCommandId } from '../../../app/keybindings/keybindingTypes'
+import { useSettingsStore } from '../../settings/settingsStore'
 import type { SlashCommand } from '../hooks/useSlashCommandMenu'
+
+const SLASH_KEYBINDING_COMMANDS: Partial<Record<string, KeybindingCommandId>> = {
+  todo: 'outline.toggleChecked',
+  indent: 'outline.indent',
+  outdent: 'outline.outdent',
+}
 
 interface SlashCommandMenuProps {
   commands: SlashCommand[]
@@ -12,6 +21,8 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
   activeIndex,
   onCommand,
 }) => {
+  const keybindingOverrides = useSettingsStore((state) => state.settings.keybindings.overrides)
+
   return (
     <div className="absolute left-16 top-9 z-50 w-60 animate-scale-up rounded-xl bg-washed-paper p-1.5 font-sans text-xs">
       <div className="mb-1 border-b border-dashed border-amber-900/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
@@ -39,11 +50,18 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
               </div>
             </div>
             <kbd className="rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-mono text-[9px] text-zinc-400">
-              {command.shortcut}
+              {shortcutLabel(command.key, command.shortcut, keybindingOverrides)}
             </kbd>
           </button>
         ))}
       </div>
     </div>
   )
+}
+
+function shortcutLabel(key: string, fallback: string, overrides: Parameters<typeof getEffectiveBindings>[1]): string {
+  const commandId = SLASH_KEYBINDING_COMMANDS[key]
+  if (!commandId) return fallback
+  const bindings = getEffectiveBindings(commandId, overrides)
+  return bindings.length > 0 ? bindings.map((binding) => displayKeybinding(binding)).join(' / ') : '未绑定'
 }

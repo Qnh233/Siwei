@@ -24,6 +24,7 @@ import { useLibraryStore } from '../library/libraryStore'
 import { useSettingsStore } from './settingsStore'
 import type { DefaultViewMode, ThemeMode } from '../../types/settings'
 import { agentDeleteApiKey, agentSaveApiKey } from '../../services/siweiApi'
+import { ShortcutSettingsSection } from './ShortcutSettingsSection'
 
 export const SettingsPage: React.FC = () => {
   const settings = useSettingsStore((s) => s.settings)
@@ -173,6 +174,8 @@ export const SettingsPage: React.FC = () => {
               </div>
             </SettingRow>
           </SettingsSection>
+
+          <ShortcutSettingsSection />
 
           <SettingsSection title="实验">
             <SettingRow title="启用实验性导图布局引擎" description="开启后可在导图工具栏切换新的布局策略。">

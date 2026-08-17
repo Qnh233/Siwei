@@ -14,6 +14,7 @@ const sidebarSettings: AppSettings = {
   theme: 'system',
   focusMode: false,
   experimentalMindMapLayoutEngine: false,
+  keybindings: { overrides: {} },
   agent: {
     enabled: false,
     provider: 'openai-compatible',

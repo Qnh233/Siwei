@@ -1,5 +1,7 @@
 import React from 'react'
 import { toast } from '../../../components/common/Toast'
+import { findKeybindingCommand } from '../../../app/keybindings/keybindingMatcher'
+import { useSettingsStore } from '../../settings/settingsStore'
 import type { SlashCommand } from './useSlashCommandMenu'
 
 interface NodeKeyboardHandlingOptions {
@@ -79,14 +81,45 @@ export function useNodeKeyboardHandling({
       }
     }
 
-    switch (event.key) {
-      case 'Enter': {
-        event.preventDefault()
-        if (event.ctrlKey || event.metaKey) {
-          onToggleChecked(nodeId)
+    const command = findKeybindingCommand(
+      'outline',
+      event,
+      useSettingsStore.getState().settings.keybindings.overrides,
+    )
+    if (command) {
+      event.preventDefault()
+      event.stopPropagation()
+      switch (command.id) {
+        case 'outline.indent': {
+          const moved = onBatchIndent?.()
+          if (!moved) onIndentNode(nodeId)
           return
         }
+        case 'outline.outdent': {
+          const moved = onBatchOutdent?.()
+          if (!moved) onOutdentNode(nodeId)
+          return
+        }
+        case 'outline.moveUp': {
+          const moved = onBatchMove?.('up')
+          if (!moved) onMoveNode(nodeId, 'up')
+          return
+        }
+        case 'outline.moveDown': {
+          const moved = onBatchMove?.('down')
+          if (!moved) onMoveNode(nodeId, 'down')
+          return
+        }
+        case 'outline.toggleChecked':
+          onToggleChecked(nodeId)
+          return
+      }
+    }
 
+    switch (event.key) {
+      case 'Enter': {
+        if (event.ctrlKey || event.metaKey || event.altKey) return
+        event.preventDefault()
         const target = event.currentTarget
         const selectionStart = target.selectionStart ?? 0
         const beforeText = target.value.substring(0, selectionStart)
@@ -110,35 +143,16 @@ export function useNodeKeyboardHandling({
         }
         break
       }
-      case 'Tab': {
-        event.preventDefault()
-        if (event.shiftKey) {
-          const moved = onBatchOutdent?.()
-          if (!moved) onOutdentNode(nodeId)
-        } else {
-          const moved = onBatchIndent?.()
-          if (!moved) onIndentNode(nodeId)
-        }
-        break
-      }
       case 'ArrowUp': {
+        if (event.ctrlKey || event.metaKey || event.altKey) return
         event.preventDefault()
-        if (event.ctrlKey || event.metaKey) {
-          const moved = onBatchMove?.('up')
-          if (!moved) onMoveNode(nodeId, 'up')
-        } else {
-          onNavigate('up')
-        }
+        onNavigate('up')
         break
       }
       case 'ArrowDown': {
+        if (event.ctrlKey || event.metaKey || event.altKey) return
         event.preventDefault()
-        if (event.ctrlKey || event.metaKey) {
-          const moved = onBatchMove?.('down')
-          if (!moved) onMoveNode(nodeId, 'down')
-        } else {
-          onNavigate('down')
-        }
+        onNavigate('down')
         break
       }
       case 'ArrowLeft': {

@@ -16,6 +16,7 @@ const baseSettings: AppSettings = {
   theme: 'system',
   focusMode: false,
   experimentalMindMapLayoutEngine: false,
+  keybindings: { overrides: {} },
   agent: {
     enabled: false,
     provider: 'openai-compatible',
@@ -98,6 +99,35 @@ describe('SettingsPage', () => {
 
     await waitFor(() => {
       expect(updateSettings).toHaveBeenCalledWith({ experimentalMindMapLayoutEngine: true })
+    })
+
+    updateSettings.mockRestore()
+  })
+
+  it('records a custom shortcut and explicitly replaces same-scope conflicts', async () => {
+    const updateSettings = vi.spyOn(useSettingsStore.getState(), 'updateSettings')
+      .mockImplementation(async (patch) => {
+        useSettingsStore.setState((state) => ({ settings: { ...state.settings, ...patch } }))
+      })
+
+    render(<SettingsPage />)
+
+    const capture = screen.getByRole('button', { name: '编辑快捷键：思维导图：新增子节点' })
+    fireEvent.click(capture)
+    fireEvent.keyDown(capture, { key: 'Tab' })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('思维导图：缩进')
+    fireEvent.click(screen.getByRole('button', { name: '确认替换快捷键' }))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        keybindings: {
+          overrides: {
+            'mindmap.insertChild': ['Tab'],
+            'mindmap.indent': [],
+          },
+        },
+      })
     })
 
     updateSettings.mockRestore()

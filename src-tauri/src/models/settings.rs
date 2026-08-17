@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -13,7 +15,16 @@ pub struct AppSettings {
     pub focus_mode: bool,
     #[serde(default)]
     pub experimental_mind_map_layout_engine: bool,
+    #[serde(default)]
+    pub keybindings: KeybindingSettings,
     pub agent: AgentSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeybindingSettings {
+    #[serde(default)]
+    pub overrides: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -78,6 +89,7 @@ impl Default for AppSettings {
             theme: ThemeMode::System,
             focus_mode: false,
             experimental_mind_map_layout_engine: false,
+            keybindings: KeybindingSettings::default(),
             agent: AgentSettings::default(),
         }
     }

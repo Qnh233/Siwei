@@ -13,6 +13,9 @@ import {
 import { motion } from 'framer-motion'
 import { toast } from '../../components/common/Toast'
 import type { ViewMode } from '../../features/document/documentStore'
+import { useSettingsStore } from '../../features/settings/settingsStore'
+import { displayKeybinding, getEffectiveBindings } from '../keybindings/keybindingMatcher'
+import type { KeybindingCommandId } from '../keybindings/keybindingTypes'
 import { ViewSwitcher } from './ViewSwitcher'
 
 interface AppHeaderProps {
@@ -50,6 +53,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenPresentation,
   onSave,
 }) => {
+  const keybindingOverrides = useSettingsStore((state) => state.settings.keybindings.overrides)
+  const shortcutTitle = (label: string, commandId: KeybindingCommandId) => {
+    const bindings = getEffectiveBindings(commandId, keybindingOverrides)
+    return bindings.length > 0 ? `${label} (${bindings.map((binding) => displayKeybinding(binding)).join(' / ')})` : label
+  }
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -8 }}
@@ -77,7 +86,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           onClick={onUndo}
           disabled={!canUndo}
           className="btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-35"
-          title="撤销 (Ctrl+Z)"
+          title={shortcutTitle('撤销', 'edit.undo')}
         >
           <Undo2 size={15} />
         </button>
@@ -87,7 +96,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           onClick={onRedo}
           disabled={!canRedo}
           className="btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-35"
-          title="重做 (Ctrl+Shift+Z)"
+          title={shortcutTitle('重做', 'edit.redo')}
         >
           <Redo2 size={15} />
         </button>
@@ -98,7 +107,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           type="button"
           onClick={onOpenSearch}
           className="btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none"
-          title="搜索 (Ctrl+F)"
+          title={shortcutTitle('搜索', 'app.search')}
         >
           <Search size={15} />
         </button>
@@ -107,7 +116,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           type="button"
           onClick={onOpenCommand}
           className="btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none"
-          title="命令面板 (Ctrl+K)"
+          title={shortcutTitle('命令面板', 'app.commandPalette')}
         >
           <CommandIcon size={15} />
         </button>
@@ -159,7 +168,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             if (success) toast.success('保存成功')
           })}
           className="flex h-8 items-center gap-1.5 rounded-md bg-zinc-900 px-3.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-zinc-800 active:scale-95 focus:outline-none dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-          title="保存 (Ctrl+S)"
+          title={shortcutTitle('保存', 'app.save')}
         >
           <Save size={13} />
           保存

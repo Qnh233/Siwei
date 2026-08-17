@@ -232,6 +232,30 @@ describe('MindMapView', () => {
     expect(useDocumentStore.getState().currentDoc?.root.children[1].text).toBe('第二节点')
   })
 
+  it('uses customized mind map bindings on the selected canvas node', () => {
+    useSettingsStore.setState({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        keybindings: {
+          overrides: {
+            'mindmap.insertChild': ['Tab'],
+            'mindmap.indent': ['Mod+]'],
+          },
+        },
+      },
+    })
+    render(<MindMapView />)
+    const windowKeyDown = vi.fn()
+    window.addEventListener('keydown', windowKeyDown)
+
+    fireEvent.click(screen.getByTestId('flow-node-node-2'))
+    fireEvent.keyDown(screen.getByTestId('react-flow'), { key: 'Tab' })
+
+    expect(useDocumentStore.getState().currentDoc?.root.children[1].children).toHaveLength(1)
+    expect(windowKeyDown).not.toHaveBeenCalled()
+    window.removeEventListener('keydown', windowKeyDown)
+  })
+
   it('renders inline content in non-editing mind map nodes', () => {
     useDocumentStore.setState((state) => ({
       currentDoc: state.currentDoc

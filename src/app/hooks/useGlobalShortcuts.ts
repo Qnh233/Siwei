@@ -2,7 +2,7 @@ import React from 'react'
 import { toast } from '../../components/common/Toast'
 import { useDocumentStore } from '../../features/document/documentStore'
 import { useSettingsStore } from '../../features/settings/settingsStore'
-import { findGlobalShortcut } from '../keyboardShortcuts'
+import { findKeybindingCommand } from '../keybindings/keybindingMatcher'
 
 interface GlobalShortcutOptions {
   onToggleSearch: () => void
@@ -22,47 +22,52 @@ export function useGlobalShortcuts({ onToggleSearch, onToggleCommand }: GlobalSh
 
   React.useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
-      const shortcut = findGlobalShortcut(event)
-      if (!shortcut) return
+      if (event.defaultPrevented || event.isComposing) return
+
+      const command = findKeybindingCommand(
+        'global',
+        event,
+        useSettingsStore.getState().settings.keybindings.overrides,
+      )
+      if (!command) return
 
       event.preventDefault()
-      switch (shortcut) {
-        case 'save':
+      switch (command.id) {
+        case 'app.save':
           void saveDoc().then((success) => {
             if (success) toast.success('已自动缝合保存至本地')
           })
           break
-        case 'undoRedo':
-          if (event.shiftKey) {
-            redo()
-          } else {
-            undo()
-          }
+        case 'edit.undo':
+          undo()
           break
-        case 'search':
+        case 'edit.redo':
+          redo()
+          break
+        case 'app.search':
           onToggleSearch()
           break
-        case 'command':
+        case 'app.commandPalette':
           onToggleCommand()
           break
-        case 'focusMode':
+        case 'view.focusMode':
           void updateSettings({ focusMode: !useSettingsStore.getState().settings.focusMode }).catch((error) => {
             toast.error(`专注模式切换失败: ${String(error)}`)
           })
           break
-        case 'newDoc':
+        case 'app.newDocument':
           if (canDiscardCurrentDoc()) {
             setViewMode(useSettingsStore.getState().settings.defaultViewMode)
             void newDoc().then(() => toast.success('已新建文档'))
           }
           break
-        case 'outlineView':
+        case 'view.outline':
           setViewMode('outline')
           break
-        case 'mindmapView':
+        case 'view.mindmap':
           setViewMode('mindmap')
           break
-        case 'splitView':
+        case 'view.split':
           setViewMode('split')
           break
       }

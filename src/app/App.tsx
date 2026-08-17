@@ -28,6 +28,7 @@ import type { ExportFormat, ImportApplyMode, ImportFormat, ImportPreview } from 
 import { useAsyncOperation } from '../hooks/useAsyncOperation'
 import { AppHeader } from './components/AppHeader'
 import { ExportDialog, ImportDialog, ImportPreviewDialog } from './components/DocumentDialogs'
+import { KeybindingSurface } from './components/KeybindingSurface'
 import { ViewSwitcher } from './components/ViewSwitcher'
 import { useAppInitialization } from './hooks/useAppInitialization'
 import { useAutoSave } from './hooks/useAutoSave'
@@ -179,20 +180,28 @@ export const App: React.FC = () => {
                   </motion.div>
                 ) : (
                   <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="absolute inset-0 h-full w-full bg-linen dark:bg-zinc-950">
-                    {viewMode === 'outline' && <OutlineEditor />}
-                    {viewMode === 'mindmap' && <MindMapView />}
+                    {viewMode === 'outline' && (
+                      <KeybindingSurface scope="outline" className="h-full">
+                        <OutlineEditor />
+                      </KeybindingSurface>
+                    )}
+                    {viewMode === 'mindmap' && (
+                      <KeybindingSurface scope="mindmap" className="h-full">
+                        <MindMapView />
+                      </KeybindingSurface>
+                    )}
                     {viewMode === 'split' && (
                       <PanelGroup orientation="horizontal">
                         <Panel defaultSize={50} minSize={20}>
-                          <div className="h-full overflow-hidden border-r border-zinc-200/60 dark:border-zinc-800/60">
+                          <KeybindingSurface scope="outline" className="h-full overflow-hidden border-r border-zinc-200/60 dark:border-zinc-800/60">
                             <OutlineEditor />
-                          </div>
+                          </KeybindingSurface>
                         </Panel>
                         <PanelResizeHandle className="PanelResizeHandle" />
                         <Panel defaultSize={50} minSize={20}>
-                          <div className="h-full overflow-hidden bg-[#FDFDFD] dark:bg-[#121212]">
+                          <KeybindingSurface scope="mindmap" className="h-full overflow-hidden bg-[#FDFDFD] dark:bg-[#121212]">
                             <MindMapView />
-                          </div>
+                          </KeybindingSurface>
                         </Panel>
                       </PanelGroup>
                     )}

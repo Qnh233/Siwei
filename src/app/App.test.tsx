@@ -16,6 +16,7 @@ const appSettings: AppSettings = {
   theme: 'system',
   focusMode: false,
   experimentalMindMapLayoutEngine: false,
+  keybindings: { overrides: {} },
   agent: {
     enabled: false,
     provider: 'openai-compatible',
@@ -130,7 +131,7 @@ describe('App', () => {
       cleanSnapshotKey: null,
       activeTextEditSession: null,
     })
-    useWorkspaceStore.setState({ activeView: 'editor' })
+    useWorkspaceStore.setState({ activeView: 'editor', activeSurface: null })
     useSettingsStore.setState({
       settings: appSettings,
       isLoaded: true,
@@ -299,6 +300,41 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText('Siwei Workspace')).toBeInTheDocument())
     expect(screen.getAllByText('当前范围内没有待办')).toHaveLength(1)
     expect(screen.getByText('当前范围内没有待办').closest('header')).toBeInTheDocument()
+  })
+
+  it('tracks the active editing surface from split-view surface events', async () => {
+    useDocumentStore.setState({ viewMode: 'split' })
+    useWorkspaceStore.setState({ activeView: 'editor', activeSurface: null })
+
+    render(<App />)
+
+    const outlineSurface = await waitFor(() => document.querySelector('[data-keybinding-scope="outline"]'))
+    const mindMapSurface = document.querySelector('[data-keybinding-scope="mindmap"]')
+    expect(outlineSurface).not.toBeNull()
+    expect(mindMapSurface).not.toBeNull()
+
+    fireEvent.pointerDown(outlineSurface as Element)
+    expect(useWorkspaceStore.getState().activeSurface).toBe('outline')
+
+    fireEvent.pointerDown(mindMapSurface as Element)
+    expect(useWorkspaceStore.getState().activeSurface).toBe('mindmap')
+  })
+
+  it('uses customized global bindings', async () => {
+    const customized = {
+      ...appSettings,
+      keybindings: { overrides: { 'app.commandPalette': ['Alt+K'] } },
+    }
+    vi.mocked(api.getSettings).mockResolvedValueOnce(customized)
+    useSettingsStore.setState({ settings: customized })
+
+    render(<App />)
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+    expect(screen.queryByRole('dialog', { name: '命令面板' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'k', altKey: true })
+    expect(await screen.findByRole('dialog', { name: '命令面板' })).toBeInTheDocument()
   })
 
   it('suppresses the browser default context menu', async () => {
