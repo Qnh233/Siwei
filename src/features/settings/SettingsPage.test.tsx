@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useLibraryStore } from '../library/libraryStore'
@@ -112,11 +112,11 @@ describe('SettingsPage', () => {
 
     render(<SettingsPage />)
 
-    const capture = screen.getByRole('button', { name: '编辑快捷键：思维导图：新增子节点' })
+    const capture = screen.getByRole('button', { name: '编辑快捷键：新增子节点' })
     fireEvent.click(capture)
     fireEvent.keyDown(capture, { key: 'Tab' })
 
-    expect(screen.getByRole('alert')).toHaveTextContent('思维导图：缩进')
+    expect(screen.getByRole('alert')).toHaveTextContent('缩进')
     fireEvent.click(screen.getByRole('button', { name: '确认替换快捷键' }))
 
     await waitFor(() => {
@@ -131,6 +131,21 @@ describe('SettingsPage', () => {
     })
 
     updateSettings.mockRestore()
+  })
+
+  it('groups shortcut settings into Chinese-only common, outline, and mind map panels', () => {
+    render(<SettingsPage />)
+
+    const common = screen.getByRole('region', { name: '通用快捷键' })
+    const outline = screen.getByRole('region', { name: '大纲快捷键' })
+    const mindMap = screen.getByRole('region', { name: '导图快捷键' })
+
+    expect(within(common).getByText('保存')).toBeInTheDocument()
+    expect(within(outline).getByText('缩进')).toBeInTheDocument()
+    expect(within(mindMap).getByText('新增子节点')).toBeInTheDocument()
+    expect(screen.queryByText('app.save')).not.toBeInTheDocument()
+    expect(screen.queryByText('outline.indent')).not.toBeInTheDocument()
+    expect(screen.queryByText('mindmap.insertChild')).not.toBeInTheDocument()
   })
 
   it('runs data maintenance actions through existing stores', async () => {
