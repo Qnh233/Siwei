@@ -8,6 +8,8 @@ import ReactFlow, {
   Node,
   NodeDragHandler,
   OnConnect,
+  OnConnectEnd,
+  OnConnectStart,
   EdgeMouseHandler,
   OnEdgesChange,
   OnNodesChange,
@@ -41,6 +43,8 @@ interface MindMapCanvasProps {
   onKeyDown: React.KeyboardEventHandler
   onInit: (instance: ReactFlowInstance) => void
   onConnect: OnConnect
+  onConnectStart: OnConnectStart
+  onConnectEnd: OnConnectEnd
   onEdgeClick: EdgeMouseHandler
   onEdgeDoubleClick: EdgeMouseHandler
 }
@@ -60,6 +64,8 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
   onKeyDown,
   onInit,
   onConnect,
+  onConnectStart,
+  onConnectEnd,
   onEdgeClick,
   onEdgeDoubleClick,
 }, ref) => {
@@ -81,6 +87,8 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
         onKeyDown={onKeyDown}
         onInit={onInit}
         onConnect={onConnect}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
         onEdgeClick={onEdgeClick}
         onEdgeDoubleClick={onEdgeDoubleClick}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}

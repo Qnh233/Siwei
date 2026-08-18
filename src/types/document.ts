@@ -12,12 +12,18 @@ export interface OutlineDocument {
 export type NodeRelationDirection = 'one-way' | 'two-way'
 export type NodeRelationHandle = 'top' | 'right' | 'bottom' | 'left'
 
+export interface NodeRelationCurveOffset {
+  x: number
+  y: number
+}
+
 export interface NodeRelation {
   id: string
   sourceNodeId: string
   targetNodeId: string
   sourceHandle?: NodeRelationHandle
   targetHandle?: NodeRelationHandle
+  curveOffset?: NodeRelationCurveOffset
   direction: NodeRelationDirection
   label?: string
   createdAt: number

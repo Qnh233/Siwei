@@ -34,10 +34,15 @@ vi.mock('reactflow', async () => {
     onNodeDragStop?: (event: React.MouseEvent, node: MockFlowNode, nodes: MockFlowNode[]) => void
     onNodeDrag?: (event: React.MouseEvent, node: MockFlowNode) => void
     onNodeDragStart?: (event: React.MouseEvent, node: MockFlowNode) => void
-    onInit?: (instance: { setCenter: ReturnType<typeof vi.fn> }) => void
+    onInit?: (instance: {
+      setCenter: ReturnType<typeof vi.fn>
+      screenToFlowPosition: (position: { x: number; y: number }) => { x: number; y: number }
+    }) => void
     onPaneClick?: () => void
     onKeyDown?: (event: React.KeyboardEvent) => void
     onConnect?: (connection: { source: string; target: string; sourceHandle?: string; targetHandle?: string }) => void
+    onConnectStart?: (event: React.MouseEvent, params: { nodeId: string | null; handleId: string | null }) => void
+    onConnectEnd?: (event: MouseEvent) => void
     onEdgeClick?: (event: React.MouseEvent, edge: { id: string; data?: unknown }) => void
     onEdgeDoubleClick?: (event: React.MouseEvent, edge: { id: string; data?: unknown }) => void
     nodesConnectable?: boolean
@@ -62,6 +67,8 @@ vi.mock('reactflow', async () => {
       onPaneClick,
       onKeyDown,
       onConnect,
+      onConnectStart,
+      onConnectEnd,
       onEdgeClick,
       onEdgeDoubleClick,
       children,
@@ -71,7 +78,10 @@ vi.mock('reactflow', async () => {
       connectOnClick,
     }: MockReactFlowProps) => {
       React.useEffect(() => {
-        onInit?.({ setCenter: vi.fn() })
+        onInit?.({
+          setCenter: vi.fn(),
+          screenToFlowPosition: (position) => position,
+        })
       }, [onInit])
 
       return (
@@ -168,21 +178,39 @@ vi.mock('reactflow', async () => {
             </button>
           ))}
           {nodesConnectable && (
-            <button
-              type="button"
-              data-testid="connect-node-1-node-2"
-              onClick={(event) => {
-                event.stopPropagation()
-                onConnect?.({
-                  source: 'node-1',
-                  target: 'node-2',
-                  sourceHandle: 'relation-right',
-                  targetHandle: 'relation-right',
-                })
-              }}
-            >
-              connect
-            </button>
+            <>
+              <button
+                type="button"
+                data-testid="connect-node-1-node-2"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onConnect?.({
+                    source: 'node-1',
+                    target: 'node-2',
+                    sourceHandle: 'relation-right',
+                    targetHandle: 'relation-right',
+                  })
+                }}
+              >
+                connect
+              </button>
+              <button
+                type="button"
+                data-testid="drop-connection-on-node-2"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  const target = nodes.find((node) => node.id === 'node-2')
+                  if (!target?.position) return
+                  onConnectStart?.(event, { nodeId: 'node-1', handleId: 'relation-right' })
+                  onConnectEnd?.(new MouseEvent('mouseup', {
+                    clientX: target.position.x + (target.width ?? 160) - 2,
+                    clientY: target.position.y + (target.height ?? 44) / 2,
+                  }))
+                }}
+              >
+                drop on node
+              </button>
+            </>
           )}
           {children}
         </div>
@@ -317,6 +345,33 @@ describe('MindMapView', () => {
       })
     })
     expect(useDocumentStore.getState().currentDoc?.root).toEqual(beforeTree)
+  })
+
+  it('snaps a dragged relation to the nearest target handle when released on the node body', async () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByTestId('drop-connection-on-node-2'))
+
+    await waitFor(() => {
+      expect(useDocumentStore.getState().currentDoc?.relations?.[0]).toMatchObject({
+        sourceNodeId: 'node-1',
+        targetNodeId: 'node-2',
+        sourceHandle: 'right',
+        targetHandle: 'right',
+      })
+    })
+  })
+
+  it('creates a new visibly offset relation for a repeated node pair connection', async () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByTestId('connect-node-1-node-2'))
+    fireEvent.click(screen.getByTestId('connect-node-1-node-2'))
+
+    await waitFor(() => expect(useDocumentStore.getState().currentDoc?.relations).toHaveLength(2))
+    const relations = useDocumentStore.getState().currentDoc?.relations ?? []
+    expect(relations[0].id).not.toBe(relations[1].id)
+    expect(relations[1].curveOffset).not.toEqual({ x: 0, y: 0 })
   })
 
   it('starts inline relation label editing from edge double click', async () => {

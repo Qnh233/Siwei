@@ -1,5 +1,5 @@
 import { generateId } from '../../../utils/id'
-import { collectDocumentNodeIds, relationPairMatches } from '../nodeRelations'
+import { collectDocumentNodeIds } from '../nodeRelations'
 import type { DocumentStoreContext } from '../documentStoreContext'
 import type { DocumentState } from '../documentStoreTypes'
 
@@ -9,7 +9,7 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
   const { get, set, beginMutation, setHistoryAfterMutation } = context
 
   return {
-    addRelation: (sourceNodeId, targetNodeId, handles = {}) => {
+    addRelation: (sourceNodeId, targetNodeId, options = {}) => {
       if (sourceNodeId === targetNodeId) return null
       const { currentDoc } = get()
       if (!currentDoc) return null
@@ -19,25 +19,6 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
       if (!before) return null
 
       const relations = currentDoc.relations ?? []
-      const existing = relations.find((relation) => relationPairMatches(relation, sourceNodeId, targetNodeId))
-      if (existing) {
-        if (existing.direction === 'one-way' && existing.sourceNodeId === targetNodeId) {
-          const now = Date.now()
-          set({
-            currentDoc: {
-              ...currentDoc,
-              relations: relations.map((relation) => relation.id === existing.id
-                ? { ...relation, direction: 'two-way', updatedAt: now }
-                : relation),
-              updatedAt: now,
-            },
-            isDirty: true,
-          })
-          setHistoryAfterMutation(before)
-        }
-        return existing.id
-      }
-
       const now = Date.now()
       const id = generateId()
       set({
@@ -48,8 +29,9 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
             id,
             sourceNodeId,
             targetNodeId,
-            sourceHandle: handles.sourceHandle,
-            targetHandle: handles.targetHandle,
+            sourceHandle: options.sourceHandle,
+            targetHandle: options.targetHandle,
+            curveOffset: options.curveOffset,
             direction: 'one-way',
             createdAt: now,
             updatedAt: now,
@@ -71,12 +53,14 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
       const now = Date.now()
       const label = changes.label === undefined ? relation.label : changes.label.trim() || undefined
       const direction = changes.direction ?? relation.direction
-      if (label === relation.label && direction === relation.direction) return
+      const curveOffset = changes.curveOffset ?? relation.curveOffset
+      const curveOffsetUnchanged = curveOffset?.x === relation.curveOffset?.x && curveOffset?.y === relation.curveOffset?.y
+      if (label === relation.label && direction === relation.direction && curveOffsetUnchanged) return
       set({
         currentDoc: {
           ...currentDoc,
           relations: currentDoc.relations?.map((item) => item.id === relationId
-            ? { ...item, label, direction, updatedAt: now }
+            ? { ...item, label, direction, curveOffset, updatedAt: now }
             : item),
           updatedAt: now,
         },

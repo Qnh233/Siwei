@@ -10,7 +10,7 @@ vi.mock('reactflow', async () => {
   return {
     BaseEdge: () => <svg data-testid="base-edge" />,
     EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    getBezierPath: () => ['M 0 0 C 0 0 100 100 100 100', 50, 50, 0, 0],
+    useReactFlow: () => ({ screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }) }),
     Position: { Top: 'top', Right: 'right', Bottom: 'bottom', Left: 'left' },
   }
 })
@@ -58,7 +58,7 @@ describe('MindMapRelationEdge', () => {
     render(<MindMapRelationEdge {...props} />)
 
     const input = screen.getByRole('textbox', { name: '编辑关系标注' })
-    expect(input.parentElement).toHaveStyle({ transform: 'translate(-50%, -50%) translate(50px, 50px)' })
+    expect(input.parentElement).toHaveStyle({ transform: 'translate(-50%, -50%) translate(50px, 28px)' })
     fireEvent.change(input, { target: { value: '新标注' } })
     fireEvent.blur(input)
 
@@ -78,5 +78,62 @@ describe('MindMapRelationEdge', () => {
 
     expect(labelX).toBeGreaterThan(400)
     expect(labelY).toBeLessThan(80)
+  })
+
+  it('renders a draggable bend point and applies a persisted curve offset to the path midpoint', () => {
+    const [path, labelX, labelY, bendX, bendY] = getMindMapRelationPath({
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 0,
+      sourcePosition: 'right' as never,
+      targetPosition: 'left' as never,
+      curveOffset: { x: 0, y: 60 },
+    })
+
+    expect(path).toContain('C')
+    expect(bendX).toBe(100)
+    expect(bendY).toBe(60)
+    expect(labelX).toBe(100)
+    expect(labelY).toBe(38)
+
+    const props = {
+      id: 'relation:rel-1',
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 0,
+      sourcePosition: 'right',
+      targetPosition: 'left',
+      data: {
+        kind: 'relation',
+        relationId: 'rel-1',
+        curveOffset: { x: 0, y: 60 },
+      },
+    } as unknown as ComponentProps<typeof MindMapRelationEdge>
+    render(<MindMapRelationEdge {...props} />)
+
+    expect(screen.getByRole('button', { name: '调整关系线弧度' })).toBeInTheDocument()
+  })
+
+  it('commits one curve offset edit when the bend point drag finishes', () => {
+    const props = {
+      id: 'relation:rel-1',
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 200,
+      targetY: 0,
+      sourcePosition: 'right',
+      targetPosition: 'left',
+      data: { kind: 'relation', relationId: 'rel-1' },
+    } as unknown as ComponentProps<typeof MindMapRelationEdge>
+    render(<MindMapRelationEdge {...props} />)
+
+    const control = screen.getByRole('button', { name: '调整关系线弧度' })
+    fireEvent.pointerDown(control, { clientX: 100, clientY: 0 })
+    fireEvent.pointerMove(window, { clientX: 100, clientY: 70 })
+    fireEvent.pointerUp(window)
+
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].curveOffset).toEqual({ x: 0, y: 70 })
   })
 })

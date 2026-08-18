@@ -44,5 +44,31 @@ describe('buildMindMapRelationEdges', () => {
     })
     expect(edges[0].markerStart).toBeDefined()
     expect(edges[0].markerEnd).toBeDefined()
+    expect(edges[0].style).toMatchObject({ strokeWidth: 2.2 })
+  })
+
+  it('renders multiple independent relations between the same node pair', () => {
+    const edges = buildMindMapRelationEdges([
+      {
+        id: 'forward',
+        sourceNodeId: 'a',
+        targetNodeId: 'b',
+        direction: 'one-way',
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      {
+        id: 'reverse',
+        sourceNodeId: 'b',
+        targetNodeId: 'a',
+        direction: 'one-way',
+        curveOffset: { x: 0, y: 44 },
+        createdAt: 2,
+        updatedAt: 2,
+      },
+    ], [node('a', 0), node('b', 300)], {})
+
+    expect(edges.map((edge) => edge.id)).toEqual(['relation:forward', 'relation:reverse'])
+    expect(edges[1].data?.curveOffset).toEqual({ x: 0, y: 44 })
   })
 })

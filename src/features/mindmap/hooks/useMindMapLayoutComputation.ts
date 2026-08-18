@@ -61,6 +61,7 @@ interface UseMindMapLayoutComputationParams {
   searchQuery: string
   editingRelationId: string | null
   finishRelationEditing: () => void
+  startRelationEditing: (relationId: string) => void
   forcePreview: MindMapLayoutResult | null
   handlers: MindMapLayoutHandlers
   setNodes: Dispatch<SetStateAction<Node<MindMapNodeData>[]>>
@@ -90,6 +91,7 @@ export function useMindMapLayoutComputation({
   searchQuery,
   editingRelationId,
   finishRelationEditing,
+  startRelationEditing,
   forcePreview,
   handlers,
   setNodes,
@@ -202,7 +204,14 @@ export function useMindMapLayoutComputation({
     setNodes(renderedNodes)
     setEdges([
       ...layouted.edges,
-      ...buildMindMapRelationEdges(currentDoc.relations, renderedNodes, nodeSizes, editingRelationId, finishRelationEditing),
+      ...buildMindMapRelationEdges(
+        currentDoc.relations,
+        renderedNodes,
+        nodeSizes,
+        editingRelationId,
+        finishRelationEditing,
+        startRelationEditing,
+      ),
     ])
   }, [
     activeMatchNodeId,
@@ -224,6 +233,7 @@ export function useMindMapLayoutComputation({
     searchQuery,
     editingRelationId,
     finishRelationEditing,
+    startRelationEditing,
     selectedNodeId,
     setEdges,
     setFeedback,

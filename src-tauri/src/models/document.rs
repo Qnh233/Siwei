@@ -32,11 +32,20 @@ pub struct NodeRelation {
     pub source_handle: Option<NodeRelationHandle>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_handle: Option<NodeRelationHandle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub curve_offset: Option<NodeRelationCurveOffset>,
     pub direction: NodeRelationDirection,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeRelationCurveOffset {
+    pub x: i32,
+    pub y: i32,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -172,7 +181,6 @@ impl OutlineDocument {
 
     fn validate_relations(&self, node_ids: &HashSet<String>) -> Result<(), AppError> {
         let mut relation_ids = HashSet::new();
-        let mut pairs = HashSet::new();
 
         for relation in &self.relations {
             if relation.id.trim().is_empty() {
@@ -210,23 +218,6 @@ impl OutlineDocument {
                     "关系标注不能包含换行: {}",
                     relation.id
                 )));
-            }
-
-            let pair = if relation.source_node_id <= relation.target_node_id {
-                (
-                    relation.source_node_id.clone(),
-                    relation.target_node_id.clone(),
-                )
-            } else {
-                (
-                    relation.target_node_id.clone(),
-                    relation.source_node_id.clone(),
-                )
-            };
-            if !pairs.insert(pair) {
-                return Err(AppError::Validation(
-                    "同一节点对之间只能有一条关系".to_string(),
-                ));
             }
         }
         Ok(())
@@ -437,8 +428,8 @@ mod tests {
 
     use super::{
         MindMapLayoutNodeSource, MindMapLayoutNodeState, MindMapLayoutPosition, MindMapLayoutState,
-        MindMapLayoutStrategy, NodeRelation, NodeRelationDirection, NodeRelationHandle,
-        OutlineDocument, OutlineNode,
+        MindMapLayoutStrategy, NodeRelation, NodeRelationCurveOffset, NodeRelationDirection,
+        NodeRelationHandle, OutlineDocument, OutlineNode,
     };
 
     fn sample_doc() -> OutlineDocument {
@@ -581,6 +572,7 @@ mod tests {
             target_node_id: "child_123".to_string(),
             source_handle: Some(NodeRelationHandle::Right),
             target_handle: Some(NodeRelationHandle::Right),
+            curve_offset: Some(NodeRelationCurveOffset { x: 24, y: -12 }),
             direction: NodeRelationDirection::TwoWay,
             label: Some("相关".to_string()),
             created_at: 1,
@@ -596,6 +588,7 @@ mod tests {
                 "targetNodeId": "child_123",
                 "sourceHandle": "right",
                 "targetHandle": "right",
+                "curveOffset": { "x": 24, "y": -12 },
                 "direction": "two-way",
                 "label": "相关",
                 "createdAt": 1,
@@ -605,7 +598,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_dangling_self_and_duplicate_relation_pairs() {
+    fn rejects_dangling_and_self_relations_but_allows_parallel_pairs() {
         let mut doc = sample_doc();
         doc.relations = vec![NodeRelation {
             id: "rel_1".to_string(),
@@ -613,6 +606,7 @@ mod tests {
             target_node_id: "missing".to_string(),
             source_handle: None,
             target_handle: None,
+            curve_offset: None,
             direction: NodeRelationDirection::OneWay,
             label: None,
             created_at: 1,
@@ -634,6 +628,7 @@ mod tests {
                 target_node_id: "child_123".to_string(),
                 source_handle: None,
                 target_handle: None,
+                curve_offset: None,
                 direction: NodeRelationDirection::OneWay,
                 label: None,
                 created_at: 1,
@@ -645,17 +640,15 @@ mod tests {
                 target_node_id: "root_123".to_string(),
                 source_handle: None,
                 target_handle: None,
+                curve_offset: None,
                 direction: NodeRelationDirection::OneWay,
                 label: None,
                 created_at: 1,
                 updated_at: 1,
             },
         ];
-        assert!(doc
-            .validate()
-            .unwrap_err()
-            .to_string()
-            .contains("只能有一条关系"));
+        doc.version = 3;
+        assert!(doc.validate().is_ok());
     }
 
     #[test]

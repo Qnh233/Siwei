@@ -7,7 +7,9 @@ export interface MindMapRelationEdgeData {
   kind: 'relation'
   relationId: string
   label?: string
+  curveOffset?: NodeRelation['curveOffset']
   editing?: boolean
+  onStartEdit?: () => void
   onFinishEdit?: () => void
 }
 
@@ -39,6 +41,7 @@ export function buildMindMapRelationEdges(
   nodeSizes: Record<string, MindMapNodeSize>,
   editingRelationId?: string | null,
   onFinishEdit?: () => void,
+  onStartEdit?: (relationId: string) => void,
 ): Edge<MindMapRelationEdgeData>[] {
   if (!relations?.length) return []
   const visibleNodeIds = new Set(nodes.map((node) => node.id))
@@ -60,14 +63,16 @@ export function buildMindMapRelationEdges(
           kind: 'relation',
           relationId: relation.id,
           label: relation.label,
+          curveOffset: relation.curveOffset,
           editing: editingRelationId === relation.id,
+          onStartEdit: onStartEdit ? () => onStartEdit(relation.id) : undefined,
           onFinishEdit,
         },
         markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
         markerStart: relation.direction === 'two-way'
           ? { type: MarkerType.ArrowClosed, width: 14, height: 14 }
           : undefined,
-        style: { stroke: '#0F766E', strokeWidth: 1.7 },
+        style: { stroke: '#0D9488', strokeWidth: 2.2 },
       }
     })
 }

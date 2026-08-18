@@ -5,6 +5,7 @@ import type {
   ImportPreview,
   MindMapLayoutPosition,
   MindMapLayoutState,
+  NodeRelationCurveOffset,
   NodeRelationDirection,
   NodeRelationHandle,
   OutlineDocument,
@@ -89,9 +90,17 @@ export interface DocumentState {
   addRelation: (
     sourceNodeId: string,
     targetNodeId: string,
-    handles?: { sourceHandle?: NodeRelationHandle; targetHandle?: NodeRelationHandle },
+    options?: {
+      sourceHandle?: NodeRelationHandle
+      targetHandle?: NodeRelationHandle
+      curveOffset?: NodeRelationCurveOffset
+    },
   ) => string | null
-  updateRelation: (relationId: string, changes: { label?: string; direction?: NodeRelationDirection }) => void
+  updateRelation: (relationId: string, changes: {
+    label?: string
+    direction?: NodeRelationDirection
+    curveOffset?: NodeRelationCurveOffset
+  }) => void
   reverseRelation: (relationId: string) => void
   deleteRelation: (relationId: string) => void
   insertNode: (nodeId: string, text?: string) => string | null

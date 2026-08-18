@@ -57,10 +57,3 @@ export function remapNodeRelations(
     }]
   })
 }
-
-export function relationPairMatches(relation: NodeRelation, sourceNodeId: string, targetNodeId: string): boolean {
-  return (
-    (relation.sourceNodeId === sourceNodeId && relation.targetNodeId === targetNodeId)
-    || (relation.sourceNodeId === targetNodeId && relation.targetNodeId === sourceNodeId)
-  )
-}

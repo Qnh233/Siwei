@@ -35,6 +35,11 @@ import { MindMapRelationEditor } from './MindMapRelationEditor'
 import type { MindMapRelationEdgeData } from './mindMapRelationEdges'
 import { findNodeById as findDocumentNodeById } from '../document/nodeActions'
 import type { NodeRelationHandle } from '../../types/document'
+import {
+  findRelationDropTarget,
+  getParallelCurveOffset,
+  getRelationNodeCenter,
+} from './mindMapRelationInteraction'
 
 const parseRelationHandle = (handleId: string | null | undefined): NodeRelationHandle | undefined => {
   const match = handleId?.match(/^relation-(top|right|bottom|left)$/)
@@ -83,6 +88,8 @@ export const MindMapView: React.FC = () => {
   const [editingRelationId, setEditingRelationId] = React.useState<string | null>(null)
   const flowInstanceRef = React.useRef<ReactFlowInstance | null>(null)
   const flowWrapperRef = React.useRef<HTMLDivElement | null>(null)
+  const relationConnectStartRef = React.useRef<{ nodeId: string; handle: NodeRelationHandle } | null>(null)
+  const relationConnectCommittedRef = React.useRef(false)
 
   const { measuredNodeSizes, measuredNodeSizeSignature } = useMindMapMeasuredNodeSizes(mode, nodes)
   const {
@@ -223,6 +230,11 @@ export const MindMapView: React.FC = () => {
   })
 
   const finishRelationEditing = React.useCallback(() => setEditingRelationId(null), [])
+  const startRelationEditing = React.useCallback((relationId: string) => {
+    closeContextMenu()
+    setSelectedRelationId(null)
+    setEditingRelationId(relationId)
+  }, [closeContextMenu])
 
   useMindMapLayoutComputation({
     currentDoc,
@@ -245,6 +257,7 @@ export const MindMapView: React.FC = () => {
     searchQuery,
     editingRelationId,
     finishRelationEditing,
+    startRelationEditing,
     forcePreview,
     handlers: layoutHandlers,
     setNodes,
@@ -310,21 +323,69 @@ export const MindMapView: React.FC = () => {
     closeContextMenu,
   })
 
-  const handleConnect = React.useCallback((connection: Connection) => {
-    if (!connection.source || !connection.target) return
-    if (connection.source === connection.target) {
+  const createRelationFromGesture = React.useCallback((
+    sourceNodeId: string,
+    targetNodeId: string,
+    sourceHandle: NodeRelationHandle,
+    targetHandle: NodeRelationHandle,
+  ) => {
+    if (sourceNodeId === targetNodeId) {
       setFeedback('关联不能连接节点自身')
-      return
+      return null
     }
-    const sourceHandle = parseRelationHandle(connection.sourceHandle)
-    const targetHandle = parseRelationHandle(connection.targetHandle)
-    if (!sourceHandle || !targetHandle) return
-    const relationId = addRelation(connection.source, connection.target, { sourceHandle, targetHandle })
+    const sourceNode = nodes.find((node) => node.id === sourceNodeId)
+    const targetNode = nodes.find((node) => node.id === targetNodeId)
+    const pairCount = currentDoc?.relations?.filter((relation) => (
+      (relation.sourceNodeId === sourceNodeId && relation.targetNodeId === targetNodeId)
+      || (relation.sourceNodeId === targetNodeId && relation.targetNodeId === sourceNodeId)
+    )).length ?? 0
+    const curveOffset = sourceNode && targetNode
+      ? getParallelCurveOffset(
+        pairCount,
+        getRelationNodeCenter(sourceNode, measuredNodeSizes),
+        getRelationNodeCenter(targetNode, measuredNodeSizes),
+      )
+      : undefined
+    const relationId = addRelation(sourceNodeId, targetNodeId, { sourceHandle, targetHandle, curveOffset })
     if (relationId) {
       closeContextMenu()
       setSelectedRelationId(relationId)
     }
-  }, [addRelation, closeContextMenu])
+    return relationId
+  }, [addRelation, closeContextMenu, currentDoc?.relations, measuredNodeSizes, nodes])
+
+  const handleConnect = React.useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target) return
+    const sourceHandle = parseRelationHandle(connection.sourceHandle)
+    const targetHandle = parseRelationHandle(connection.targetHandle)
+    if (!sourceHandle || !targetHandle) return
+    relationConnectCommittedRef.current = true
+    createRelationFromGesture(connection.source, connection.target, sourceHandle, targetHandle)
+  }, [createRelationFromGesture])
+
+  const handleConnectStart = React.useCallback((
+    _event: React.MouseEvent | React.TouchEvent,
+    params: { nodeId: string | null; handleId: string | null },
+  ) => {
+    relationConnectCommittedRef.current = false
+    const handle = parseRelationHandle(params.handleId)
+    relationConnectStartRef.current = params.nodeId && handle ? { nodeId: params.nodeId, handle } : null
+  }, [])
+
+  const handleConnectEnd = React.useCallback((event: MouseEvent | TouchEvent) => {
+    const start = relationConnectStartRef.current
+    const wasCommitted = relationConnectCommittedRef.current
+    relationConnectStartRef.current = null
+    relationConnectCommittedRef.current = false
+    if (!start || wasCommitted || !flowInstanceRef.current) return
+
+    const pointer = 'changedTouches' in event ? event.changedTouches[0] : event
+    if (!pointer) return
+    const point = flowInstanceRef.current.screenToFlowPosition({ x: pointer.clientX, y: pointer.clientY })
+    const target = findRelationDropTarget(nodes, point, start.nodeId, measuredNodeSizes)
+    if (!target) return
+    createRelationFromGesture(start.nodeId, target.nodeId, start.handle, target.handle)
+  }, [createRelationFromGesture, measuredNodeSizes, nodes])
 
   const handleEdgeClick = React.useCallback((_event: React.MouseEvent, edge: Edge) => {
     const data = edge.data as MindMapRelationEdgeData | undefined
@@ -337,10 +398,8 @@ export const MindMapView: React.FC = () => {
   const handleEdgeDoubleClick = React.useCallback((_event: React.MouseEvent, edge: Edge) => {
     const data = edge.data as MindMapRelationEdgeData | undefined
     if (data?.kind !== 'relation') return
-    closeContextMenu()
-    setSelectedRelationId(null)
-    setEditingRelationId(data.relationId)
-  }, [closeContextMenu])
+    startRelationEditing(data.relationId)
+  }, [startRelationEditing])
 
   const forcePreviewActive = Boolean(forcePreview)
   const overlayHandlers = useMindMapOverlayHandlers({
@@ -392,6 +451,8 @@ export const MindMapView: React.FC = () => {
         onKeyDown={handleKeyDown}
         onInit={canvasHandlers.handleInit}
         onConnect={handleConnect}
+        onConnectStart={handleConnectStart}
+        onConnectEnd={handleConnectEnd}
         onEdgeClick={handleEdgeClick}
         onEdgeDoubleClick={handleEdgeDoubleClick}
       />

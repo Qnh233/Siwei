@@ -736,25 +736,22 @@ describe('documentStore', () => {
     ])
   })
 
-  it('creates, merges, edits and undoes node relations as document data', async () => {
+  it('creates independent relations for every completed connection gesture', async () => {
     await loadFixtureDoc()
 
-    const relationId = useDocumentStore.getState().addRelation('node-1', 'node-2')
-    expect(relationId).toBeTruthy()
+    const forwardId = useDocumentStore.getState().addRelation('node-1', 'node-2')
+    const reverseId = useDocumentStore.getState().addRelation('node-2', 'node-1')
+
+    expect(forwardId).toBeTruthy()
+    expect(reverseId).toBeTruthy()
+    expect(reverseId).not.toBe(forwardId)
     expect(useDocumentStore.getState().currentDoc?.relations).toEqual([
-      expect.objectContaining({
-        id: relationId,
-        sourceNodeId: 'node-1',
-        targetNodeId: 'node-2',
-        direction: 'one-way',
-      }),
+      expect.objectContaining({ id: forwardId, sourceNodeId: 'node-1', targetNodeId: 'node-2', direction: 'one-way' }),
+      expect.objectContaining({ id: reverseId, sourceNodeId: 'node-2', targetNodeId: 'node-1', direction: 'one-way' }),
     ])
     expect(useDocumentStore.getState().currentDoc?.version).toBe(3)
 
-    expect(useDocumentStore.getState().addRelation('node-2', 'node-1')).toBe(relationId)
-    expect(useDocumentStore.getState().currentDoc?.relations?.[0].direction).toBe('two-way')
-
-    useDocumentStore.getState().updateRelation(relationId!, { label: '依赖' })
+    useDocumentStore.getState().updateRelation(forwardId!, { label: '依赖' })
     expect(useDocumentStore.getState().currentDoc?.relations?.[0].label).toBe('依赖')
 
     useDocumentStore.getState().undo()
@@ -781,6 +778,17 @@ describe('documentStore', () => {
       sourceHandle: 'right',
       targetHandle: 'right',
     })
+  })
+
+  it('persists a relation curve offset as one undoable edit', async () => {
+    await loadFixtureDoc()
+    const relationId = useDocumentStore.getState().addRelation('node-1', 'node-2')!
+
+    useDocumentStore.getState().updateRelation(relationId, { curveOffset: { x: 42, y: -18 } })
+
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].curveOffset).toEqual({ x: 42, y: -18 })
+    useDocumentStore.getState().undo()
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].curveOffset).toBeUndefined()
   })
 
   it('rejects self links and missing relation endpoints without creating history', async () => {
