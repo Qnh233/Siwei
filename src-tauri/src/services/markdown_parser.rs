@@ -104,6 +104,7 @@ pub fn import_markdown(content: &str) -> Result<OutlineDocument, AppError> {
         created_at: timestamp,
         updated_at: timestamp,
         mind_map_layout: None,
+        relations: Vec::new(),
         root,
     };
     doc.validate()?;

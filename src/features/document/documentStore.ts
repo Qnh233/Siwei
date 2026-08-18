@@ -14,6 +14,7 @@ import { createNodeMetadataSlice } from './slices/nodeMetadataSlice'
 import { createPersistenceSlice } from './slices/persistenceSlice'
 import { createUiSlice } from './slices/uiSlice'
 import { createHistorySlice } from './slices/historySlice'
+import { createRelationSlice } from './slices/relationSlice'
 import { createTreeSlice } from './slices/treeSlice'
 import type { DocumentState } from './documentStoreTypes'
 export type {
@@ -103,6 +104,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
     ...createTreeSlice(storeContext),
 
     ...createNodeMetadataSlice(storeContext),
+
+    ...createRelationSlice(storeContext),
 
     ...createAgentIntegrationSlice(storeContext),
 

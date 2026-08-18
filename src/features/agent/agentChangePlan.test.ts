@@ -90,6 +90,30 @@ describe('agentChangePlan', () => {
     })
   })
 
+  it('prunes relations when an agent plan deletes a referenced node', () => {
+    const doc = createDocument()
+    doc.relations = [{
+      id: 'rel-1',
+      sourceNodeId: 'node-1-1',
+      targetNodeId: 'node-2',
+      direction: 'one-way',
+      createdAt: 1,
+      updatedAt: 1,
+    }]
+    const plan = createStrictPlan(
+      doc.id,
+      createDocumentSnapshotKey(doc),
+      [{ type: 'deleteNode', nodeId: 'node-1-1', reason: '清理节点' }],
+      { riskLevel: 'high', references: [currentDocumentReference(doc.id)] },
+    )
+
+    const result = applyAgentChangePlanToDocument(doc, plan)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.document.relations).toBeUndefined()
+  })
+
   it('rejects deleting the root node and moving a node into its own descendant', () => {
     const doc = createDocument()
 

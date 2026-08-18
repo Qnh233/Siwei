@@ -11,6 +11,7 @@ import type {
   AgentOperation,
   AgentPlanResult,
 } from './agentTypes'
+import { pruneNodeRelations } from '../document/nodeRelations'
 
 export function createDocumentSnapshotKey(doc: OutlineDocument): string {
   return JSON.stringify(doc)
@@ -153,6 +154,7 @@ export function applyAgentChangePlanToDocument(
       ...doc,
       updatedAt: now,
       root: nextRoot,
+      relations: pruneNodeRelations(doc.relations, nextRoot),
     },
   }
 }

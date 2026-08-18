@@ -138,6 +138,7 @@ mod tests {
             created_at: 1,
             updated_at: 10,
             mind_map_layout: None,
+            relations: Vec::new(),
             root: node("root", title, vec![child]),
         }
     }

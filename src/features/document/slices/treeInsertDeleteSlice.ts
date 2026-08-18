@@ -8,6 +8,7 @@ import {
   updateNodeAtPath,
 } from '../../../utils/tree'
 import { createOutlineNode } from '../documentStoreHelpers'
+import { collectSubtreeNodeIds } from '../nodeRelations'
 import type { DocumentStoreContext } from '../documentStoreContext'
 import type { DocumentState } from '../documentStoreTypes'
 
@@ -150,9 +151,20 @@ export function createTreeInsertDeleteSlice(context: DocumentStoreContext): Tree
       }
 
       const newRoot = deleteNodeAtPath(currentDoc.root, path)
+      let deletedNode = currentDoc.root
+      for (const index of path) deletedNode = deletedNode.children[index]
+      const deletedIds = collectSubtreeNodeIds(deletedNode)
+      const relations = currentDoc.relations?.filter((relation) => (
+        !deletedIds.has(relation.sourceNodeId) && !deletedIds.has(relation.targetNodeId)
+      ))
 
       set({
-        currentDoc: { ...currentDoc, root: newRoot, updatedAt: Date.now() },
+        currentDoc: {
+          ...currentDoc,
+          root: newRoot,
+          relations: relations?.length ? relations : undefined,
+          updatedAt: Date.now(),
+        },
         selectedNodeId: selectedNodeId === nodeId ? nextFocusId : selectedNodeId,
         isDirty: true,
       })

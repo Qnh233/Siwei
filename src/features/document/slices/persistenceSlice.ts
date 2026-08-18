@@ -2,11 +2,11 @@ import type { OutlineDocument, OutlineNode } from '../../../types/document'
 import * as api from '../../../services/siweiApi'
 import { normalizeMindMapLayoutState } from '../../mindmap/mindMapLayoutState'
 import {
-  cloneOutlineNodesWithFreshIds,
   collectCollapsedIds,
   createSnapshot,
   getDocumentWithVersionForSave,
 } from '../documentStoreHelpers'
+import { cloneOutlineNodesWithRelationMap, remapNodeRelations } from '../nodeRelations'
 import type { DocumentStoreContext } from '../documentStoreContext'
 import type { DocumentState } from '../documentStoreTypes'
 import { findPath, updateNodeAtPath } from '../../../utils/tree'
@@ -268,8 +268,10 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
       if (!currentDoc || !before) return
 
       const now = Date.now()
-      const importedNodes = cloneOutlineNodesWithFreshIds(importedDoc.root.children, now)
+      const cloned = cloneOutlineNodesWithRelationMap(importedDoc.root.children, now)
+      const importedNodes = cloned.nodes
       if (importedNodes.length === 0) return
+      const importedRelations = remapNodeRelations(importedDoc.relations, cloned.idMap, now)
 
       const importedCollapsedIds = new Set<string>()
       importedNodes.forEach((node) => collectCollapsedIds(node, importedCollapsedIds))
@@ -284,11 +286,14 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
         ...targetNode,
         children: [...targetNode.children, ...importedNodes],
       }))
+      const nextRelations = [...(currentDoc.relations ?? []), ...importedRelations]
 
       set({
         currentDoc: {
           ...currentDoc,
           root: newRoot,
+          relations: nextRelations.length > 0 ? nextRelations : undefined,
+          version: importedRelations.length > 0 ? Math.max(currentDoc.version, 3) : currentDoc.version,
           updatedAt: now,
         },
         collapsedNodeIds: nextCollapsedIds,

@@ -1,5 +1,5 @@
 import React from 'react'
-import { ReactFlowInstance, useEdgesState, useNodesState } from 'reactflow'
+import { type Connection, type Edge, ReactFlowInstance, useEdgesState, useNodesState } from 'reactflow'
 import 'reactflow/dist/style.css'
 
 import { useDocumentStore } from '../document/documentStore'
@@ -31,6 +31,9 @@ import { useSettingsStore } from '../settings/settingsStore'
 import { useMindMapDragReorg } from './hooks/useMindMapDragReorg'
 import { useMindMapSplitReveal } from './hooks/useMindMapSplitReveal'
 import { useWorkspaceStore } from '../../app/workspaceStore'
+import { MindMapRelationEditor } from './MindMapRelationEditor'
+import type { MindMapRelationEdgeData } from './mindMapRelationEdges'
+import { findNodeById as findDocumentNodeById } from '../document/nodeActions'
 
 export const MindMapView: React.FC = () => {
   const currentDoc = useDocumentStore((s) => s.currentDoc)
@@ -51,6 +54,10 @@ export const MindMapView: React.FC = () => {
   const commitTextEditSession = useDocumentStore((s) => s.commitTextEditSession)
   const commitMindMapLayout = useDocumentStore((s) => s.commitMindMapLayout)
   const moveNodeToParent = useDocumentStore((s) => s.moveNodeToParent)
+  const addRelation = useDocumentStore((s) => s.addRelation)
+  const updateRelation = useDocumentStore((s) => s.updateRelation)
+  const reverseRelation = useDocumentStore((s) => s.reverseRelation)
+  const deleteRelation = useDocumentStore((s) => s.deleteRelation)
   const experimentalLayoutEnabled = useSettingsStore((s) => s.settings.experimentalMindMapLayoutEngine)
   const nodeRevealRequest = useWorkspaceStore((s) => s.nodeRevealRequest)
   const requestNodeReveal = useWorkspaceStore((s) => s.requestNodeReveal)
@@ -66,6 +73,7 @@ export const MindMapView: React.FC = () => {
   const [feedback, setFeedback] = React.useState<string | null>(null)
   const [diagnosticsOpen, setDiagnosticsOpen] = React.useState(false)
   const [layoutDiagnostics, setLayoutDiagnostics] = React.useState<MindMapLayoutDiagnostics | null>(null)
+  const [selectedRelationId, setSelectedRelationId] = React.useState<string | null>(null)
   const flowInstanceRef = React.useRef<ReactFlowInstance | null>(null)
   const flowWrapperRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -226,6 +234,7 @@ export const MindMapView: React.FC = () => {
     selectedNodeId,
     editingNodeId: editing?.nodeId ?? null,
     searchQuery,
+    relationMode: mode === 'relation',
     forcePreview,
     handlers: layoutHandlers,
     setNodes,
@@ -291,6 +300,27 @@ export const MindMapView: React.FC = () => {
     closeContextMenu,
   })
 
+  const handleConnect = React.useCallback((connection: Connection) => {
+    if (mode !== 'relation' || !connection.source || !connection.target) return
+    if (connection.source === connection.target) {
+      setFeedback('关联不能连接节点自身')
+      return
+    }
+    const relationId = addRelation(connection.source, connection.target)
+    if (relationId) {
+      closeContextMenu()
+      setSelectedRelationId(relationId)
+    }
+  }, [addRelation, closeContextMenu, mode])
+
+  const handleEdgeClick = React.useCallback((_event: React.MouseEvent, edge: Edge) => {
+    const data = edge.data as MindMapRelationEdgeData | undefined
+    if (data?.kind === 'relation') {
+      closeContextMenu()
+      setSelectedRelationId(data.relationId)
+    }
+  }, [closeContextMenu])
+
   const forcePreviewActive = Boolean(forcePreview)
   const overlayHandlers = useMindMapOverlayHandlers({
     contextMenu,
@@ -311,6 +341,9 @@ export const MindMapView: React.FC = () => {
   }
 
   const deleteMessage = deleteTarget ? formatDeleteConfirmation(deleteTarget) : null
+  const selectedRelation = currentDoc.relations?.find((relation) => relation.id === selectedRelationId) ?? null
+  const relationSource = selectedRelation ? findDocumentNodeById(currentDoc.root, selectedRelation.sourceNodeId) : null
+  const relationTarget = selectedRelation ? findDocumentNodeById(currentDoc.root, selectedRelation.targetNodeId) : null
 
   return (
     <div className="relative h-full w-full bg-linen">
@@ -318,17 +351,26 @@ export const MindMapView: React.FC = () => {
         ref={flowWrapperRef}
         nodes={nodes}
         edges={edges}
-        nodesDraggable={!forcePreview}
-        onNodeClick={canvasHandlers.handleNodeClick}
+        nodesDraggable={!forcePreview && mode !== 'relation'}
+        nodesConnectable={mode === 'relation'}
+        onNodeClick={(event, node) => {
+          setSelectedRelationId(null)
+          canvasHandlers.handleNodeClick(event, node)
+        }}
         onNodeDoubleClick={canvasHandlers.handleNodeDoubleClick}
         onNodeContextMenu={canvasHandlers.handleNodeContextMenu}
-        onPaneClick={canvasHandlers.handlePaneClick}
+        onPaneClick={() => {
+          setSelectedRelationId(null)
+          canvasHandlers.handlePaneClick()
+        }}
         onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
         onKeyDown={handleKeyDown}
         onInit={canvasHandlers.handleInit}
+        onConnect={handleConnect}
+        onEdgeClick={handleEdgeClick}
       />
       <MindMapOverlays
         exportClean={exportClean}
@@ -369,6 +411,20 @@ export const MindMapView: React.FC = () => {
         onCancelDelete={cancelDelete}
         onConfirmDelete={confirmDelete}
       />
+      {selectedRelation && !exportClean && (
+        <MindMapRelationEditor
+          relation={selectedRelation}
+          sourceLabel={relationSource?.text ?? ''}
+          targetLabel={relationTarget?.text ?? ''}
+          onUpdate={(changes) => updateRelation(selectedRelation.id, changes)}
+          onReverse={() => reverseRelation(selectedRelation.id)}
+          onDelete={() => {
+            deleteRelation(selectedRelation.id)
+            setSelectedRelationId(null)
+          }}
+          onClose={() => setSelectedRelationId(null)}
+        />
+      )}
     </div>
   )
 }

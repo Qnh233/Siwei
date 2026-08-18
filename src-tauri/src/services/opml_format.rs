@@ -77,6 +77,7 @@ pub fn import_opml(content: &str) -> Result<(OutlineDocument, ImportReport), App
         created_at: timestamp,
         updated_at: timestamp,
         mind_map_layout: None,
+        relations: Vec::new(),
         root: OutlineNode {
             id: new_id(),
             text: title,

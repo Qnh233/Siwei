@@ -5,7 +5,20 @@ export interface OutlineDocument {
   createdAt: number
   updatedAt: number
   mindMapLayout?: MindMapLayoutState
+  relations?: NodeRelation[]
   root: OutlineNode
+}
+
+export type NodeRelationDirection = 'one-way' | 'two-way'
+
+export interface NodeRelation {
+  id: string
+  sourceNodeId: string
+  targetNodeId: string
+  direction: NodeRelationDirection
+  label?: string
+  createdAt: number
+  updatedAt: number
 }
 
 export interface MindMapLayoutPosition {

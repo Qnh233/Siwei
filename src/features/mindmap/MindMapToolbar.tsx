@@ -1,8 +1,8 @@
 import React from 'react'
-import { Activity, GitBranch, LayoutDashboard, Move, Search, Sparkles, X } from 'lucide-react'
+import { Activity, GitBranch, LayoutDashboard, Link2, Move, Search, Sparkles, X } from 'lucide-react'
 import type { MindMapLayoutStrategy } from '../../types/document'
 
-export type MindMapMode = 'layout' | 'reorganize'
+export type MindMapMode = 'layout' | 'reorganize' | 'relation'
 
 interface MindMapToolbarProps {
   mode: MindMapMode
@@ -45,6 +45,17 @@ export const MindMapToolbar: React.FC<MindMapToolbarProps> = ({
         }`}
       >
         <Move className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        aria-label="关联"
+        title="关联"
+        onClick={() => onModeChange('relation')}
+        className={`flex h-8 w-8 items-center justify-center rounded-md transition ${
+          mode === 'relation' ? 'bg-teal-100 text-teal-800' : 'text-zinc-500 hover:bg-amber-50'
+        }`}
+      >
+        <Link2 className="h-4 w-4" />
       </button>
       <button
         type="button"

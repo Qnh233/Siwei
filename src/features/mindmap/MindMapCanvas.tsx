@@ -6,6 +6,8 @@ import ReactFlow, {
   MiniMap,
   Node,
   NodeDragHandler,
+  OnConnect,
+  EdgeMouseHandler,
   OnEdgesChange,
   OnNodesChange,
   ReactFlowInstance,
@@ -32,6 +34,9 @@ interface MindMapCanvasProps {
   onNodeDragStop: NodeDragHandler
   onKeyDown: React.KeyboardEventHandler
   onInit: (instance: ReactFlowInstance) => void
+  onConnect: OnConnect
+  onEdgeClick: EdgeMouseHandler
+  nodesConnectable: boolean
 }
 
 export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps>(({
@@ -48,6 +53,9 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
   onNodeDragStop,
   onKeyDown,
   onInit,
+  onConnect,
+  onEdgeClick,
+  nodesConnectable,
 }, ref) => {
   return (
     <div ref={ref} className="h-full w-full">
@@ -65,13 +73,15 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
         onNodeDragStop={onNodeDragStop}
         onKeyDown={onKeyDown}
         onInit={onInit}
+        onConnect={onConnect}
+        onEdgeClick={onEdgeClick}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         fitViewOptions={{ padding: 0.25 }}
         minZoom={0.1}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={nodesDraggable}
-        nodesConnectable={false}
+        nodesConnectable={nodesConnectable}
         elementsSelectable
         className="text-zinc-700"
       >

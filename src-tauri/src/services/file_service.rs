@@ -248,6 +248,7 @@ mod tests {
             created_at: 1,
             updated_at: 1,
             mind_map_layout: None,
+            relations: Vec::new(),
             root: OutlineNode {
                 id: format!("root_{child_id}"),
                 text: title.to_string(),

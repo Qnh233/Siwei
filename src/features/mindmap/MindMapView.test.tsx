@@ -25,6 +25,7 @@ vi.mock('reactflow', async () => {
 
   interface MockReactFlowProps {
     nodes: MockFlowNode[]
+    edges: Array<{ id: string; data?: unknown; label?: React.ReactNode }>
     nodeTypes: Record<string, React.ComponentType<{ id: string; data: unknown; selected?: boolean; type: string }>>
     nodesDraggable?: boolean
     onNodeClick?: (event: React.MouseEvent, node: MockFlowNode) => void
@@ -36,6 +37,9 @@ vi.mock('reactflow', async () => {
     onInit?: (instance: { setCenter: ReturnType<typeof vi.fn> }) => void
     onPaneClick?: () => void
     onKeyDown?: (event: React.KeyboardEvent) => void
+    onConnect?: (connection: { source: string; target: string }) => void
+    onEdgeClick?: (event: React.MouseEvent, edge: { id: string; data?: unknown }) => void
+    nodesConnectable?: boolean
     children?: React.ReactNode
   }
 
@@ -43,6 +47,7 @@ vi.mock('reactflow', async () => {
     __esModule: true,
     default: ({
       nodes,
+      edges,
       nodeTypes,
       onNodeClick,
       onNodeDoubleClick,
@@ -53,8 +58,11 @@ vi.mock('reactflow', async () => {
       onInit,
       onPaneClick,
       onKeyDown,
+      onConnect,
+      onEdgeClick,
       children,
       nodesDraggable,
+      nodesConnectable,
     }: MockReactFlowProps) => {
       React.useEffect(() => {
         onInit?.({ setCenter: vi.fn() })
@@ -64,6 +72,7 @@ vi.mock('reactflow', async () => {
         <div
           data-testid="react-flow"
           data-nodes-draggable={String(nodesDraggable)}
+          data-nodes-connectable={String(nodesConnectable)}
           tabIndex={0}
           onClick={onPaneClick}
           onKeyDown={onKeyDown}
@@ -132,6 +141,31 @@ vi.mock('reactflow', async () => {
               </div>
             )
           })}
+          {edges.map((edge) => (
+            <button
+              key={edge.id}
+              type="button"
+              data-testid={`flow-edge-${edge.id}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                onEdgeClick?.(event, edge)
+              }}
+            >
+              {edge.label ?? edge.id}
+            </button>
+          ))}
+          {nodesConnectable && (
+            <button
+              type="button"
+              data-testid="connect-node-1-node-2"
+              onClick={(event) => {
+                event.stopPropagation()
+                onConnect?.({ source: 'node-1', target: 'node-2' })
+              }}
+            >
+              connect
+            </button>
+          )}
           {children}
         </div>
       )
@@ -140,6 +174,7 @@ vi.mock('reactflow', async () => {
       <span data-testid={`flow-handle-${id}`} onClick={onClick} />
     ),
     Position: { Left: 'left', Right: 'right' },
+    MarkerType: { ArrowClosed: 'arrowclosed' },
     MiniMap: () => <div data-testid="flow-minimap" />,
     Controls: () => <div data-testid="flow-controls" />,
     Background: () => <div data-testid="flow-background" />,
@@ -227,6 +262,33 @@ describe('MindMapView', () => {
       nodeId: 'node-2',
       source: 'mindmap',
     })
+  })
+
+  it('creates and edits a semantic relation without changing the outline tree', async () => {
+    render(<MindMapView />)
+    const beforeTree = useDocumentStore.getState().currentDoc?.root
+
+    fireEvent.click(screen.getByRole('button', { name: '关联' }))
+    expect(screen.getByTestId('react-flow')).toHaveAttribute('data-nodes-connectable', 'true')
+    fireEvent.click(screen.getByTestId('connect-node-1-node-2'))
+
+    const relationEditor = screen.getByRole('dialog', { name: '编辑节点关联' })
+    expect(within(relationEditor).getByText('第一节点')).toBeInTheDocument()
+    expect(within(relationEditor).getByText('第二节点')).toBeInTheDocument()
+    const input = screen.getByPlaceholderText('关系标注（可选）')
+    fireEvent.change(input, { target: { value: '依赖' } })
+    fireEvent.blur(input)
+    fireEvent.click(screen.getByRole('button', { name: '双向' }))
+
+    await waitFor(() => {
+      expect(useDocumentStore.getState().currentDoc?.relations?.[0]).toMatchObject({
+        sourceNodeId: 'node-1',
+        targetNodeId: 'node-2',
+        direction: 'two-way',
+        label: '依赖',
+      })
+    })
+    expect(useDocumentStore.getState().currentDoc?.root).toEqual(beforeTree)
   })
 
   it('starts inline editing from direct printable input on a selected node', () => {

@@ -1,7 +1,7 @@
 import React from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Edge, Node } from 'reactflow'
-import type { MindMapLayoutStrategy, MindMapLayoutState, OutlineNode } from '../../../types/document'
+import type { MindMapLayoutStrategy, MindMapLayoutState, NodeRelation, OutlineNode } from '../../../types/document'
 import { createAgentDocumentPreview } from '../../agent/agentChangePlan'
 import type { AgentDocumentPreview } from '../../agent/agentTypes'
 import { findNodeById } from '../mindMapActions'
@@ -23,6 +23,7 @@ import {
 } from '../layoutEngine'
 import type { MindMapNodeData } from '../MindMapNode'
 import { DEFAULT_MIND_MAP_LAYOUT_STRATEGY } from '../mindMapLayoutState'
+import { buildMindMapRelationEdges } from '../mindMapRelationEdges'
 
 export interface MindMapLayoutHandlers {
   toggleBranchSide: MindMapNodeData['onToggleBranchSide']
@@ -40,7 +41,7 @@ export interface MindMapLayoutHandlers {
 }
 
 interface UseMindMapLayoutComputationParams {
-  currentDoc: { root: OutlineNode; mindMapLayout?: MindMapLayoutState } | null
+  currentDoc: { root: OutlineNode; mindMapLayout?: MindMapLayoutState; relations?: NodeRelation[] } | null
   pendingAgentPlan: Parameters<typeof createAgentDocumentPreview>[0]
   collapsedNodeIds: Set<string>
   validFocusRootNodeId: string | null
@@ -58,6 +59,7 @@ interface UseMindMapLayoutComputationParams {
   selectedNodeId: string | null
   editingNodeId: string | null
   searchQuery: string
+  relationMode: boolean
   forcePreview: MindMapLayoutResult | null
   handlers: MindMapLayoutHandlers
   setNodes: Dispatch<SetStateAction<Node<MindMapNodeData>[]>>
@@ -85,6 +87,7 @@ export function useMindMapLayoutComputation({
   selectedNodeId,
   editingNodeId,
   searchQuery,
+  relationMode,
   forcePreview,
   handlers,
   setNodes,
@@ -140,6 +143,7 @@ export function useMindMapLayoutComputation({
             agentInsertion: !exportClean && Boolean(previewInsertion),
             dropState: null,
             editing: editingNodeId === node.id,
+            relationMode,
             leftBranchCollapsed: collapsedBranchSides.has(createBranchSideKey(node.id, 'left')),
             rightBranchCollapsed: collapsedBranchSides.has(createBranchSideKey(node.id, 'right')),
             onToggleBranchSide: handlers.toggleBranchSide,
@@ -193,8 +197,12 @@ export function useMindMapLayoutComputation({
       }
     }
 
-    setNodes(attachLayoutNodeSizes(layouted.nodes, nodeSizes))
-    setEdges(layouted.edges)
+    const renderedNodes = attachLayoutNodeSizes(layouted.nodes, nodeSizes)
+    setNodes(renderedNodes)
+    setEdges([
+      ...layouted.edges,
+      ...buildMindMapRelationEdges(currentDoc.relations, renderedNodes, nodeSizes),
+    ])
   }, [
     activeMatchNodeId,
     agentPreview,
@@ -213,6 +221,7 @@ export function useMindMapLayoutComputation({
     measuredNodeSizeSignature,
     previewLayoutRoot,
     searchQuery,
+    relationMode,
     selectedNodeId,
     setEdges,
     setFeedback,

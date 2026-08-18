@@ -289,6 +289,34 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().isDirty).toBe(false)
   })
 
+  it('saves relations as version three document data', async () => {
+    const doc = createDocument()
+    useDocumentStore.setState({
+      currentDoc: {
+        ...doc,
+        relations: [{
+          id: 'rel-1',
+          sourceNodeId: 'node-1',
+          targetNodeId: 'node-2',
+          direction: 'one-way',
+          label: '依赖',
+          createdAt: 1,
+          updatedAt: 1,
+        }],
+      },
+      collapsedNodeIds: new Set<string>(),
+      currentFilePath: 'demo.siwei.json',
+      isDirty: true,
+    })
+    apiMock.saveDocument.mockResolvedValueOnce(undefined)
+    apiMock.addRecentDoc.mockResolvedValueOnce(undefined)
+
+    expect(await useDocumentStore.getState().saveDoc()).toBe(true)
+    const savedDoc = apiMock.saveDocument.mock.calls[0][1]
+    expect(savedDoc.version).toBe(3)
+    expect(savedDoc.relations?.[0]).toMatchObject({ id: 'rel-1', label: '依赖' })
+  })
+
   it('cleans orphan layout records before saving', async () => {
     const doc = createDocument()
     useDocumentStore.setState({
@@ -706,6 +734,111 @@ describe('documentStore', () => {
       '第一节点',
       '第二节点',
     ])
+  })
+
+  it('creates, merges, edits and undoes node relations as document data', async () => {
+    await loadFixtureDoc()
+
+    const relationId = useDocumentStore.getState().addRelation('node-1', 'node-2')
+    expect(relationId).toBeTruthy()
+    expect(useDocumentStore.getState().currentDoc?.relations).toEqual([
+      expect.objectContaining({
+        id: relationId,
+        sourceNodeId: 'node-1',
+        targetNodeId: 'node-2',
+        direction: 'one-way',
+      }),
+    ])
+    expect(useDocumentStore.getState().currentDoc?.version).toBe(3)
+
+    expect(useDocumentStore.getState().addRelation('node-2', 'node-1')).toBe(relationId)
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].direction).toBe('two-way')
+
+    useDocumentStore.getState().updateRelation(relationId!, { label: '依赖' })
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].label).toBe('依赖')
+
+    useDocumentStore.getState().undo()
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].label).toBeUndefined()
+  })
+
+  it('rejects self links and missing relation endpoints without creating history', async () => {
+    await loadFixtureDoc()
+
+    expect(useDocumentStore.getState().addRelation('node-1', 'node-1')).toBeNull()
+    expect(useDocumentStore.getState().addRelation('node-1', 'missing')).toBeNull()
+    expect(useDocumentStore.getState().currentDoc?.relations).toBeUndefined()
+    expect(useDocumentStore.getState().canUndo).toBe(false)
+  })
+
+  it('reverses and explicitly deletes a one-way relation with undo support', async () => {
+    await loadFixtureDoc()
+    const relationId = useDocumentStore.getState().addRelation('node-1', 'node-2')!
+
+    useDocumentStore.getState().reverseRelation(relationId)
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0]).toMatchObject({
+      sourceNodeId: 'node-2',
+      targetNodeId: 'node-1',
+      direction: 'one-way',
+    })
+
+    useDocumentStore.getState().deleteRelation(relationId)
+    expect(useDocumentStore.getState().currentDoc?.relations).toBeUndefined()
+
+    useDocumentStore.getState().undo()
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].sourceNodeId).toBe('node-2')
+  })
+
+  it('removes relations that touch a deleted subtree and restores them with undo', async () => {
+    const doc = createDocument()
+    doc.relations = [{
+      id: 'rel-1',
+      sourceNodeId: 'node-1-1',
+      targetNodeId: 'node-2',
+      direction: 'one-way',
+      createdAt: 1,
+      updatedAt: 1,
+    }]
+    await loadFixtureDoc(doc)
+
+    useDocumentStore.getState().deleteNode('node-1')
+    expect(useDocumentStore.getState().currentDoc?.relations).toBeUndefined()
+
+    useDocumentStore.getState().undo()
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].id).toBe('rel-1')
+  })
+
+  it('remaps relations when appending imported nodes with fresh ids', async () => {
+    await loadFixtureDoc()
+    const imported = createDocument()
+    imported.relations = [{
+      id: 'import-rel',
+      sourceNodeId: 'node-1',
+      targetNodeId: 'node-2',
+      direction: 'two-way',
+      label: '相关',
+      createdAt: 1,
+      updatedAt: 1,
+    }]
+
+    useDocumentStore.getState().applyImportPreview({
+      document: imported,
+      summary: {
+        title: imported.title,
+        nodeCount: 2,
+        maxDepth: 2,
+        taskCount: 0,
+        tagCount: 0,
+        noteCount: 0,
+        warningCount: 0,
+      },
+      report: { items: [] },
+    }, { mode: 'appendToRoot' })
+
+    const relation = useDocumentStore.getState().currentDoc?.relations?.[0]
+    expect(relation).toMatchObject({ direction: 'two-way', label: '相关' })
+    expect(relation?.id).not.toBe('import-rel')
+    expect(relation?.sourceNodeId).not.toBe('node-1')
+    expect(relation?.targetNodeId).not.toBe('node-2')
   })
 
   it('appends an import preview to the selected node and expands it', async () => {

@@ -17,7 +17,30 @@ pub struct OutlineDocument {
     pub updated_at: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mind_map_layout: Option<MindMapLayoutState>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub relations: Vec<NodeRelation>,
     pub root: OutlineNode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeRelation {
+    pub id: String,
+    pub source_node_id: String,
+    pub target_node_id: String,
+    pub direction: NodeRelationDirection,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum NodeRelationDirection {
+    #[serde(rename = "one-way")]
+    OneWay,
+    #[serde(rename = "two-way")]
+    TwoWay,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -102,6 +125,7 @@ impl OutlineDocument {
             created_at: timestamp,
             updated_at: timestamp,
             mind_map_layout: None,
+            relations: Vec::new(),
             root: OutlineNode::new(title, timestamp),
         }
     }
@@ -121,8 +145,76 @@ impl OutlineDocument {
 
         let mut node_ids = HashSet::new();
         self.root.validate_recursive("root", &mut node_ids)?;
+        if !self.relations.is_empty() && self.version < 3 {
+            return Err(AppError::Validation(
+                "包含节点关系的文档版本必须至少为 3".to_string(),
+            ));
+        }
+        self.validate_relations(&node_ids)?;
         if let Some(layout) = &self.mind_map_layout {
             layout.validate()?;
+        }
+        Ok(())
+    }
+
+    fn validate_relations(&self, node_ids: &HashSet<String>) -> Result<(), AppError> {
+        let mut relation_ids = HashSet::new();
+        let mut pairs = HashSet::new();
+
+        for relation in &self.relations {
+            if relation.id.trim().is_empty() {
+                return Err(AppError::Validation("relation.id 不能为空".to_string()));
+            }
+            if !relation_ids.insert(relation.id.clone()) {
+                return Err(AppError::Validation(format!(
+                    "关系 ID 重复: {}",
+                    relation.id
+                )));
+            }
+            if relation.source_node_id == relation.target_node_id {
+                return Err(AppError::Validation("关系不能连接节点自身".to_string()));
+            }
+            if !node_ids.contains(&relation.source_node_id)
+                || !node_ids.contains(&relation.target_node_id)
+            {
+                return Err(AppError::Validation(format!(
+                    "关系引用了不存在的节点: {}",
+                    relation.id
+                )));
+            }
+            if relation.created_at == 0 || relation.updated_at == 0 {
+                return Err(AppError::Validation(format!(
+                    "关系时间戳必须大于 0: {}",
+                    relation.id
+                )));
+            }
+            if relation
+                .label
+                .as_deref()
+                .is_some_and(|label| label.contains('\n') || label.contains('\r'))
+            {
+                return Err(AppError::Validation(format!(
+                    "关系标注不能包含换行: {}",
+                    relation.id
+                )));
+            }
+
+            let pair = if relation.source_node_id <= relation.target_node_id {
+                (
+                    relation.source_node_id.clone(),
+                    relation.target_node_id.clone(),
+                )
+            } else {
+                (
+                    relation.target_node_id.clone(),
+                    relation.source_node_id.clone(),
+                )
+            };
+            if !pairs.insert(pair) {
+                return Err(AppError::Validation(
+                    "同一节点对之间只能有一条关系".to_string(),
+                ));
+            }
         }
         Ok(())
     }
@@ -332,7 +424,7 @@ mod tests {
 
     use super::{
         MindMapLayoutNodeSource, MindMapLayoutNodeState, MindMapLayoutPosition, MindMapLayoutState,
-        MindMapLayoutStrategy, OutlineDocument, OutlineNode,
+        MindMapLayoutStrategy, NodeRelation, NodeRelationDirection, OutlineDocument, OutlineNode,
     };
 
     fn sample_doc() -> OutlineDocument {
@@ -355,6 +447,7 @@ mod tests {
             created_at: 1,
             updated_at: 1,
             mind_map_layout: None,
+            relations: Vec::new(),
             root: OutlineNode {
                 id: "root_123".to_string(),
                 text: "Title".to_string(),
@@ -460,7 +553,85 @@ mod tests {
 
         assert_eq!(doc.version, 1);
         assert!(doc.mind_map_layout.is_none());
+        assert!(doc.relations.is_empty());
         assert!(doc.validate().is_ok());
+    }
+
+    #[test]
+    fn serializes_and_validates_node_relations() {
+        let mut doc = sample_doc();
+        doc.version = 3;
+        doc.relations.push(NodeRelation {
+            id: "rel_1".to_string(),
+            source_node_id: "root_123".to_string(),
+            target_node_id: "child_123".to_string(),
+            direction: NodeRelationDirection::TwoWay,
+            label: Some("相关".to_string()),
+            created_at: 1,
+            updated_at: 2,
+        });
+
+        assert!(doc.validate().is_ok());
+        assert_eq!(
+            serde_json::to_value(doc).unwrap()["relations"][0],
+            json!({
+                "id": "rel_1",
+                "sourceNodeId": "root_123",
+                "targetNodeId": "child_123",
+                "direction": "two-way",
+                "label": "相关",
+                "createdAt": 1,
+                "updatedAt": 2
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_dangling_self_and_duplicate_relation_pairs() {
+        let mut doc = sample_doc();
+        doc.relations = vec![NodeRelation {
+            id: "rel_1".to_string(),
+            source_node_id: "root_123".to_string(),
+            target_node_id: "missing".to_string(),
+            direction: NodeRelationDirection::OneWay,
+            label: None,
+            created_at: 1,
+            updated_at: 1,
+        }];
+        assert!(doc
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("不存在的节点"));
+
+        doc.relations[0].target_node_id = "root_123".to_string();
+        assert!(doc.validate().unwrap_err().to_string().contains("节点自身"));
+
+        doc.relations = vec![
+            NodeRelation {
+                id: "rel_1".to_string(),
+                source_node_id: "root_123".to_string(),
+                target_node_id: "child_123".to_string(),
+                direction: NodeRelationDirection::OneWay,
+                label: None,
+                created_at: 1,
+                updated_at: 1,
+            },
+            NodeRelation {
+                id: "rel_2".to_string(),
+                source_node_id: "child_123".to_string(),
+                target_node_id: "root_123".to_string(),
+                direction: NodeRelationDirection::OneWay,
+                label: None,
+                created_at: 1,
+                updated_at: 1,
+            },
+        ];
+        assert!(doc
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("只能有一条关系"));
     }
 
     #[test]
