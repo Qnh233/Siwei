@@ -12,6 +12,7 @@ import { useNodeDragDrop } from './hooks/useNodeDragDrop'
 import { useNodeKeyboardHandling } from './hooks/useNodeKeyboardHandling'
 import { useSlashCommandMenu } from './hooks/useSlashCommandMenu'
 import type { AgentInsertionPreview, AgentNodePreview } from '../agent/agentTypes'
+import { useWorkspaceStore } from '../../app/workspaceStore'
 
 interface OutlineNodeItemProps {
   node: OutlineNode
@@ -21,6 +22,7 @@ interface OutlineNodeItemProps {
   isSelected: boolean
   isMultiSelected?: boolean
   isCollapsed: boolean
+  revealRequestSeq?: number | null
   agentPreview?: AgentNodePreview
   agentInsertions?: AgentInsertionPreview[]
   onNavigate: (direction: 'up' | 'down') => void
@@ -39,6 +41,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
   isSelected,
   isMultiSelected = false,
   isCollapsed,
+  revealRequestSeq = null,
   agentPreview,
   agentInsertions = [],
   onNavigate,
@@ -62,6 +65,9 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
   const beginTextEditSession = useDocumentStore((s) => s.beginTextEditSession)
   const commitTextEditSession = useDocumentStore((s) => s.commitTextEditSession)
   const isFocusedNode = useDocumentStore((s) => s.focusedNodeId === node.id)
+  const viewMode = useDocumentStore((s) => s.viewMode)
+  const activeSurface = useWorkspaceStore((s) => s.activeSurface)
+  const requestNodeReveal = useWorkspaceStore((s) => s.requestNodeReveal)
 
   const containerRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -81,14 +87,20 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
 
   // Focus caret restoration
   React.useEffect(() => {
-    if (isSelected && inputRef.current) {
+    const canFocusSelection = viewMode !== 'split' || activeSurface === 'outline'
+    if (isSelected && canFocusSelection && inputRef.current) {
       inputRef.current.focus()
       const val = inputRef.current.value
       inputRef.current.setSelectionRange(val.length, val.length)
     } else {
       closeSlashMenu()
     }
-  }, [closeSlashMenu, isSelected])
+  }, [activeSurface, closeSlashMenu, isSelected, viewMode])
+
+  React.useEffect(() => {
+    if (revealRequestSeq === null) return
+    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [revealRequestSeq])
 
   React.useEffect(() => {
     if (!isFocusedNode) return
@@ -138,8 +150,16 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
     onSlashCommand: executeSlashCommand,
     onSelectNone: () => selectNode(null),
     onUpdateText: updateNodeText,
-    onInsertNode: insertNode,
-    onDeleteNode: deleteNode,
+    onInsertNode: (nodeId, text) => {
+      const insertedId = insertNode(nodeId, text)
+      if (insertedId) requestNodeReveal(insertedId, 'outline')
+      return insertedId
+    },
+    onDeleteNode: (nodeId) => {
+      deleteNode(nodeId)
+      const selectedNodeId = useDocumentStore.getState().selectedNodeId
+      if (selectedNodeId) requestNodeReveal(selectedNodeId, 'outline')
+    },
     onIndentNode: indentNode,
     onOutdentNode: outdentNode,
     onMoveNode: moveNode,

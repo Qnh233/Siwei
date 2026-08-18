@@ -29,9 +29,12 @@ import { useMindMapExportController } from './hooks/useMindMapExportController'
 import { useMindMapFocusFeedback } from './hooks/useMindMapFocusFeedback'
 import { useSettingsStore } from '../settings/settingsStore'
 import { useMindMapDragReorg } from './hooks/useMindMapDragReorg'
+import { useMindMapSplitReveal } from './hooks/useMindMapSplitReveal'
+import { useWorkspaceStore } from '../../app/workspaceStore'
 
 export const MindMapView: React.FC = () => {
   const currentDoc = useDocumentStore((s) => s.currentDoc)
+  const viewMode = useDocumentStore((s) => s.viewMode)
   const collapsedNodeIds = useDocumentStore((s) => s.collapsedNodeIds)
   const pendingAgentPlan = useAgentStore((s) => s.pendingPlan)
   const selectedNodeId = useDocumentStore((s) => s.selectedNodeId)
@@ -49,6 +52,13 @@ export const MindMapView: React.FC = () => {
   const commitMindMapLayout = useDocumentStore((s) => s.commitMindMapLayout)
   const moveNodeToParent = useDocumentStore((s) => s.moveNodeToParent)
   const experimentalLayoutEnabled = useSettingsStore((s) => s.settings.experimentalMindMapLayoutEngine)
+  const nodeRevealRequest = useWorkspaceStore((s) => s.nodeRevealRequest)
+  const requestNodeReveal = useWorkspaceStore((s) => s.requestNodeReveal)
+
+  const selectMindMapNode = React.useCallback((nodeId: string | null) => {
+    selectNode(nodeId)
+    if (nodeId) requestNodeReveal(nodeId, 'mindmap')
+  }, [requestNodeReveal, selectNode])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<MindMapNodeData>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
@@ -68,7 +78,7 @@ export const MindMapView: React.FC = () => {
     cancelEditing,
     clearEditing,
   } = useMindMapEditing({
-    selectNode,
+    selectNode: selectMindMapNode,
     beginTextEditSession,
     commitTextEditSession,
   })
@@ -82,7 +92,7 @@ export const MindMapView: React.FC = () => {
     currentDoc,
     focusRequestSeq,
     selectedNodeId,
-    selectNode,
+    selectNode: selectMindMapNode,
   })
 
   useMindMapFocusFeedback({
@@ -122,7 +132,9 @@ export const MindMapView: React.FC = () => {
   const handleAfterDelete = React.useCallback((deletedNodeId: string) => {
     setEditing(null)
     handleAfterDeleteFocus(deletedNodeId)
-  }, [handleAfterDeleteFocus])
+    const nodeId = useDocumentStore.getState().selectedNodeId
+    if (nodeId) requestNodeReveal(nodeId, 'mindmap')
+  }, [handleAfterDeleteFocus, requestNodeReveal])
 
   const {
     layoutStrategy,
@@ -226,7 +238,16 @@ export const MindMapView: React.FC = () => {
     activeMatchNodeId,
     nodes,
     flowInstanceRef,
-    selectNode,
+    selectNode: selectMindMapNode,
+  })
+
+  useMindMapSplitReveal({
+    request: nodeRevealRequest,
+    nodes,
+    flowInstanceRef,
+    focusRootNodeId: validFocusRootNodeId,
+    resetFocus: handleResetFocus,
+    split: viewMode === 'split',
   })
 
   const handleNodesChange = React.useCallback(onNodesChange, [onNodesChange])
@@ -259,12 +280,12 @@ export const MindMapView: React.FC = () => {
     startEditingWithText,
     closeContextMenu,
     clearEditing,
-    selectNode,
+    selectNode: selectMindMapNode,
   })
 
   const canvasHandlers = useMindMapCanvasHandlers({
     flowInstanceRef,
-    selectNode,
+    selectNode: selectMindMapNode,
     startEditing,
     openContextMenu,
     closeContextMenu,

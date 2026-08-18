@@ -9,6 +9,7 @@ import { useNodeContextMenuController } from '../document/useNodeContextMenuCont
 import { formatDeleteConfirmation } from '../document/nodeActions'
 import { createAgentDocumentPreview } from '../agent/agentChangePlan'
 import { useAgentStore } from '../agent/agentStore'
+import { useWorkspaceStore } from '../../app/workspaceStore'
 
 export const OutlineEditor: React.FC = () => {
   const currentDoc = useDocumentStore((s) => s.currentDoc)
@@ -28,11 +29,23 @@ export const OutlineEditor: React.FC = () => {
   const beginTextEditSession = useDocumentStore((s) => s.beginTextEditSession)
   const commitTextEditSession = useDocumentStore((s) => s.commitTextEditSession)
   const getNodeOperationState = useDocumentStore((s) => s.getNodeOperationState)
+  const nodeRevealRequest = useWorkspaceStore((s) => s.nodeRevealRequest)
+  const requestNodeReveal = useWorkspaceStore((s) => s.requestNodeReveal)
+
+  const selectOutlineNode = React.useCallback((nodeId: string | null) => {
+    selectNode(nodeId)
+    if (nodeId) requestNodeReveal(nodeId, 'outline')
+  }, [requestNodeReveal, selectNode])
 
   const startEditing = React.useCallback((nodeId: string) => {
-    selectNode(nodeId)
+    selectOutlineNode(nodeId)
     beginTextEditSession(nodeId)
-  }, [beginTextEditSession, selectNode])
+  }, [beginTextEditSession, selectOutlineNode])
+
+  const revealCurrentOutlineSelection = React.useCallback(() => {
+    const nodeId = useDocumentStore.getState().selectedNodeId
+    if (nodeId) requestNodeReveal(nodeId, 'outline')
+  }, [requestNodeReveal])
 
   const {
     contextMenu,
@@ -46,6 +59,7 @@ export const OutlineEditor: React.FC = () => {
   } = useNodeContextMenuController({
     currentDoc,
     onStartEditing: startEditing,
+    onAfterDelete: revealCurrentOutlineSelection,
   })
 
   const visibleNodes = React.useMemo(() => {
@@ -66,15 +80,15 @@ export const OutlineEditor: React.FC = () => {
     if (index === -1) return
 
     if (direction === 'up' && index > 0) {
-      selectNode(visibleNodes[index - 1].node.id)
+      selectOutlineNode(visibleNodes[index - 1].node.id)
     } else if (direction === 'down' && index < visibleNodes.length - 1) {
-      selectNode(visibleNodes[index + 1].node.id)
+      selectOutlineNode(visibleNodes[index + 1].node.id)
     }
   }
 
   const handleNodeClick = (event: React.MouseEvent, nodeId: string) => {
     if (!event.shiftKey) {
-      selectNode(nodeId)
+      selectOutlineNode(nodeId)
       return
     }
 
@@ -82,7 +96,7 @@ export const OutlineEditor: React.FC = () => {
     const anchorIndex = visibleNodes.findIndex((item) => item.node.id === anchorNodeId)
     const focusIndex = visibleNodes.findIndex((item) => item.node.id === nodeId)
     if (anchorIndex === -1 || focusIndex === -1) {
-      selectNode(nodeId)
+      selectOutlineNode(nodeId)
       return
     }
 
@@ -91,6 +105,7 @@ export const OutlineEditor: React.FC = () => {
       anchorNodeId,
       selectedNodeIds: visibleNodes.slice(start, end + 1).map((item) => item.node.id),
     })
+    requestNodeReveal(nodeId, 'outline')
   }
 
   const selectedVisibleNodeIds = outlineSelection.selectedNodeIds.filter((nodeId) =>
@@ -129,7 +144,7 @@ export const OutlineEditor: React.FC = () => {
     if (e.target === e.currentTarget) {
       closeContextMenu()
       if (visibleNodes.length > 0) {
-        selectNode(visibleNodes[visibleNodes.length - 1].node.id)
+        selectOutlineNode(visibleNodes[visibleNodes.length - 1].node.id)
       } else {
         insertNode(currentDoc.root.id)
       }
@@ -186,6 +201,9 @@ export const OutlineEditor: React.FC = () => {
             isSelected={selectedNodeId === item.node.id}
             isMultiSelected={selectedVisibleNodeIds.includes(item.node.id)}
             isCollapsed={Boolean(item.node.collapsed || collapsedNodeIds.has(item.node.id))}
+            revealRequestSeq={nodeRevealRequest?.source === 'mindmap' && nodeRevealRequest.nodeId === item.node.id
+              ? nodeRevealRequest.seq
+              : null}
             agentPreview={agentPreview.nodePreviews.get(item.node.id)}
             agentInsertions={agentPreview.insertionsByParentId.get(item.node.id) ?? []}
             onNavigate={(dir) => handleNavigate(item.node.id, dir)}
@@ -193,7 +211,10 @@ export const OutlineEditor: React.FC = () => {
             onBatchMove={runBatchMove}
             onBatchIndent={runBatchIndent}
             onBatchOutdent={runBatchOutdent}
-            onNodeContextMenu={(event, nodeId) => openContextMenu(nodeId, event.clientX, event.clientY)}
+            onNodeContextMenu={(event, nodeId) => {
+              requestNodeReveal(nodeId, 'outline')
+              openContextMenu(nodeId, event.clientX, event.clientY)
+            }}
           />
         ))}
 

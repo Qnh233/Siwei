@@ -1,11 +1,12 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDocument, createNode } from '../../test/fixtures'
 import { createDocumentSnapshotKey } from '../agent/agentChangePlan'
 import { useAgentStore } from '../agent/agentStore'
 import { useDocumentStore } from '../document/documentStore'
 import { OutlineEditor } from './OutlineEditor'
 import { OutlineNodeItem } from './OutlineNodeItem'
+import { useWorkspaceStore } from '../../app/workspaceStore'
 
 describe('OutlineNodeItem', () => {
   beforeEach(() => {
@@ -33,6 +34,11 @@ describe('OutlineNodeItem', () => {
       error: null,
       messages: [],
       isSending: false,
+    })
+    useWorkspaceStore.setState({
+      activeView: 'editor',
+      activeSurface: null,
+      nodeRevealRequest: null,
     })
   })
 
@@ -86,6 +92,37 @@ describe('OutlineNodeItem', () => {
     expect(screen.getByRole('menuitem', { name: '新增同级节点' })).toBeEnabled()
     expect(screen.getByRole('menuitem', { name: '删除节点' })).toBeEnabled()
     expect(screen.getByRole('menuitem', { name: '向内缩进' })).toBeDisabled()
+  })
+
+  it('reveals a mind map selection in split view without stealing input focus', () => {
+    const scrollIntoView = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    useDocumentStore.setState({ viewMode: 'split', selectedNodeId: 'node-2' })
+    useWorkspaceStore.setState({
+      activeSurface: 'mindmap',
+      nodeRevealRequest: { nodeId: 'node-2', source: 'mindmap', seq: 1 },
+    })
+
+    render(<OutlineEditor />)
+
+    const input = screen.getByDisplayValue('第二节点')
+    expect(scrollIntoView).toHaveBeenCalled()
+    expect(document.activeElement).not.toBe(input)
+    expect(useWorkspaceStore.getState().activeSurface).toBe('mindmap')
+  })
+
+  it('emits a new reveal request when the same outline node is clicked again', () => {
+    useDocumentStore.setState({ viewMode: 'split', selectedNodeId: 'node-2' })
+    render(<OutlineEditor />)
+
+    const input = screen.getByDisplayValue('第二节点')
+    fireEvent.click(input)
+    const first = useWorkspaceStore.getState().nodeRevealRequest
+    fireEvent.click(input)
+    const second = useWorkspaceStore.getState().nodeRevealRequest
+
+    expect(first).toMatchObject({ nodeId: 'node-2', source: 'outline' })
+    expect(second?.seq).toBe((first?.seq ?? 0) + 1)
   })
 
   it('inserts a sibling from the outline node context menu and starts editing it', () => {

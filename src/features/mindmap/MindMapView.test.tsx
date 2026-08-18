@@ -8,6 +8,7 @@ import { useDocumentStore } from '../document/documentStore'
 import { useSettingsStore } from '../settings/settingsStore'
 import { MindMapView } from './MindMapView'
 import { DEFAULT_SETTINGS } from '../../types/settings'
+import { useWorkspaceStore } from '../../app/workspaceStore'
 
 vi.mock('reactflow', async () => {
   const React = await import('react')
@@ -186,6 +187,11 @@ describe('MindMapView', () => {
       isSaving: false,
       error: null,
     })
+    useWorkspaceStore.setState({
+      activeView: 'editor',
+      activeSurface: null,
+      nodeRevealRequest: null,
+    })
   })
 
   it('opens a context menu with root-only disabled operations', () => {
@@ -209,6 +215,18 @@ describe('MindMapView', () => {
 
     expect(useDocumentStore.getState().currentDoc?.root.children[1].text).toBe('导图重命名')
     expect(screen.queryByDisplayValue('导图重命名')).not.toBeInTheDocument()
+  })
+
+  it('emits a reveal request when a mind map node is selected', () => {
+    useDocumentStore.setState({ viewMode: 'split' })
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByTestId('flow-node-node-2'))
+
+    expect(useWorkspaceStore.getState().nodeRevealRequest).toMatchObject({
+      nodeId: 'node-2',
+      source: 'mindmap',
+    })
   })
 
   it('starts inline editing from direct printable input on a selected node', () => {
