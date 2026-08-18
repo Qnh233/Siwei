@@ -9,8 +9,14 @@ import { useSettingsStore } from './settingsStore'
 
 interface PendingConflict {
   commandId: KeybindingCommandId
+  bindingIndex: number
   conflictingCommandId: KeybindingCommandId
   chord: string
+}
+
+interface CaptureTarget {
+  commandId: KeybindingCommandId
+  bindingIndex: number
 }
 
 const SCOPE_LABELS: Record<KeybindingScope, string> = {
@@ -35,7 +41,7 @@ export const ShortcutSettingsSection: React.FC = () => {
   const settings = useSettingsStore((state) => state.settings)
   const updateSettings = useSettingsStore((state) => state.updateSettings)
   const [query, setQuery] = React.useState('')
-  const [capturing, setCapturing] = React.useState<KeybindingCommandId | null>(null)
+  const [capturing, setCapturing] = React.useState<CaptureTarget | null>(null)
   const [pendingConflict, setPendingConflict] = React.useState<PendingConflict | null>(null)
   const isMac = isMacPlatform()
 
@@ -57,11 +63,24 @@ export const ShortcutSettingsSection: React.FC = () => {
     }
   }, [updateSettings])
 
-  const applyBinding = React.useCallback((commandId: KeybindingCommandId, chord: string, replaceId?: KeybindingCommandId) => {
+  const applyBinding = React.useCallback((
+    commandId: KeybindingCommandId,
+    bindingIndex: number,
+    chord: string,
+    replaceId?: KeybindingCommandId,
+  ) => {
     const currentOverrides = useSettingsStore.getState().settings.keybindings.overrides
+    const currentBindings = getEffectiveBindings(commandId, currentOverrides)
+    const nextBindings = [...currentBindings]
+    if (bindingIndex < nextBindings.length) {
+      nextBindings[bindingIndex] = chord
+    } else {
+      nextBindings.push(chord)
+    }
+
     const overrides: KeybindingOverrides = {
       ...currentOverrides,
-      [commandId]: [chord],
+      [commandId]: nextBindings,
     }
     if (replaceId) {
       overrides[replaceId] = getEffectiveBindings(replaceId, currentOverrides).filter((binding) => binding !== chord)
@@ -69,8 +88,12 @@ export const ShortcutSettingsSection: React.FC = () => {
     void saveOverrides(overrides)
   }, [saveOverrides])
 
-  const handleCapture = (commandId: KeybindingCommandId, event: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (capturing !== commandId) return
+  const handleCapture = (
+    commandId: KeybindingCommandId,
+    bindingIndex: number,
+    event: React.KeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (capturing?.commandId !== commandId || capturing.bindingIndex !== bindingIndex) return
     event.preventDefault()
     event.stopPropagation()
 
@@ -83,12 +106,20 @@ export const ShortcutSettingsSection: React.FC = () => {
     if (!chord) return
 
     const overrides = useSettingsStore.getState().settings.keybindings.overrides
+    const currentBindings = getEffectiveBindings(commandId, overrides)
+    if (currentBindings.some((binding, index) => binding === chord && index !== bindingIndex)) {
+      setCapturing(null)
+      toast.info('该快捷键已用于当前操作')
+      return
+    }
+
     const conflict = findKeybindingConflict(commandId, chord, overrides)
     setCapturing(null)
 
     if (conflict.type === 'hard-conflict') {
       setPendingConflict({
         commandId,
+        bindingIndex,
         conflictingCommandId: conflict.commandId,
         chord,
       })
@@ -102,7 +133,14 @@ export const ShortcutSettingsSection: React.FC = () => {
         ? `“${conflictLabel}”会在对应区域优先于该全局快捷键`
         : `当前区域会优先于“${conflictLabel}”`)
     }
-    applyBinding(commandId, chord)
+    applyBinding(commandId, bindingIndex, chord)
+  }
+
+  const removeBinding = (commandId: KeybindingCommandId, bindingIndex: number) => {
+    const overrides = useSettingsStore.getState().settings.keybindings.overrides
+    const nextBindings = getEffectiveBindings(commandId, overrides)
+      .filter((_, index) => index !== bindingIndex)
+    void saveOverrides({ ...overrides, [commandId]: nextBindings })
   }
 
   const restoreCommand = (commandId: KeybindingCommandId) => {
@@ -146,7 +184,12 @@ export const ShortcutSettingsSection: React.FC = () => {
               type="button"
               aria-label="确认替换快捷键"
               onClick={() => {
-                applyBinding(pendingConflict.commandId, pendingConflict.chord, pendingConflict.conflictingCommandId)
+                applyBinding(
+                  pendingConflict.commandId,
+                  pendingConflict.bindingIndex,
+                  pendingConflict.chord,
+                  pendingConflict.conflictingCommandId,
+                )
                 setPendingConflict(null)
               }}
               className="font-semibold underline underline-offset-2"
@@ -185,29 +228,53 @@ export const ShortcutSettingsSection: React.FC = () => {
                   return (
                     <div key={command.id} className="grid gap-3 px-3 py-3 md:grid-cols-[1fr_auto] md:items-center">
                       <div className="text-sm font-medium text-zinc-800 dark:text-zinc-100">{label}</div>
-                      <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      <div
+                        role="group"
+                        aria-label={`${label}快捷键`}
+                        className="flex flex-wrap items-center gap-2 md:justify-end"
+                      >
+                        {bindings.map((binding, bindingIndex) => (
+                          <React.Fragment key={`${command.id}-${bindingIndex}`}>
+                            {bindingIndex > 0 && <span className="text-[11px] text-zinc-400">或</span>}
+                            <div className="inline-flex overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+                              <button
+                                type="button"
+                                aria-label={`编辑${label}快捷键 ${bindingIndex + 1}`}
+                                onClick={() => {
+                                  setPendingConflict(null)
+                                  setCapturing({ commandId: command.id, bindingIndex })
+                                }}
+                                onKeyDown={(event) => handleCapture(command.id, bindingIndex, event)}
+                                className="min-w-20 px-2.5 py-1.5 text-xs font-medium text-zinc-700 outline-none focus:bg-white dark:text-zinc-200 dark:focus:bg-zinc-900"
+                              >
+                                {capturing?.commandId === command.id && capturing.bindingIndex === bindingIndex
+                                  ? '按下快捷键…'
+                                  : displayKeybinding(binding, isMac)}
+                              </button>
+                              <button
+                                type="button"
+                                aria-label={`删除${label}快捷键 ${bindingIndex + 1}`}
+                                onClick={() => removeBinding(command.id, bindingIndex)}
+                                className="border-l border-zinc-200 px-2 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:border-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </React.Fragment>
+                        ))}
                         <button
                           type="button"
-                          aria-label={`编辑快捷键：${label}`}
+                          aria-label={`为${label}添加快捷键`}
                           onClick={() => {
                             setPendingConflict(null)
-                            setCapturing(command.id)
+                            setCapturing({ commandId: command.id, bindingIndex: bindings.length })
                           }}
-                          onKeyDown={(event) => handleCapture(command.id, event)}
-                          className="min-w-24 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs font-medium text-zinc-700 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+                          onKeyDown={(event) => handleCapture(command.id, bindings.length, event)}
+                          className="rounded-md border border-dashed border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-500 outline-none hover:border-zinc-400 hover:text-zinc-700 focus:border-zinc-400 dark:border-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                         >
-                          {capturing === command.id
+                          {capturing?.commandId === command.id && capturing.bindingIndex === bindings.length
                             ? '按下快捷键…'
-                            : bindings.length > 0
-                              ? bindings.map((binding) => displayKeybinding(binding, isMac)).join(' / ')
-                              : '未绑定'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void saveOverrides({ ...settings.keybindings.overrides, [command.id]: [] })}
-                          className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                        >
-                          清除
+                            : bindings.length === 0 ? '添加快捷键' : '+ 添加'}
                         </button>
                         <button
                           type="button"

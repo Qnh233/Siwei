@@ -112,7 +112,7 @@ describe('SettingsPage', () => {
 
     render(<SettingsPage />)
 
-    const capture = screen.getByRole('button', { name: '编辑快捷键：新增子节点' })
+    const capture = screen.getByRole('button', { name: '编辑新增子节点快捷键 1' })
     fireEvent.click(capture)
     fireEvent.keyDown(capture, { key: 'Tab' })
 
@@ -127,6 +127,59 @@ describe('SettingsPage', () => {
             'mindmap.indent': [],
           },
         },
+      })
+    })
+
+    updateSettings.mockRestore()
+  })
+
+  it('edits alternative shortcuts independently for one command', async () => {
+    const updateSettings = vi.spyOn(useSettingsStore.getState(), 'updateSettings')
+      .mockImplementation(async (patch) => {
+        useSettingsStore.setState((state) => ({ settings: { ...state.settings, ...patch } }))
+      })
+
+    render(<SettingsPage />)
+
+    const focusMode = screen.getByRole('group', { name: '专注模式快捷键' })
+    expect(within(focusMode).getByText('或')).toBeInTheDocument()
+    expect(within(focusMode).getByRole('button', { name: '编辑专注模式快捷键 1' })).toHaveTextContent('F11')
+    expect(within(focusMode).getByRole('button', { name: '编辑专注模式快捷键 2' })).toHaveTextContent('Ctrl+\\')
+
+    const first = within(focusMode).getByRole('button', { name: '编辑专注模式快捷键 1' })
+    fireEvent.click(first)
+    fireEvent.keyDown(first, { key: 'F10' })
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        keybindings: { overrides: { 'view.focusMode': ['F10', 'Mod+\\'] } },
+      })
+    })
+
+    const second = within(focusMode).getByRole('button', { name: '编辑专注模式快捷键 2' })
+    fireEvent.click(second)
+    fireEvent.keyDown(second, { key: '9', altKey: true })
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        keybindings: { overrides: { 'view.focusMode': ['F10', 'Alt+9'] } },
+      })
+    })
+
+    const add = within(focusMode).getByRole('button', { name: '为专注模式添加快捷键' })
+    fireEvent.click(add)
+    fireEvent.keyDown(add, { key: 'F9' })
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        keybindings: { overrides: { 'view.focusMode': ['F10', 'Alt+9', 'F9'] } },
+      })
+    })
+
+    fireEvent.click(within(focusMode).getByRole('button', { name: '删除专注模式快捷键 2' }))
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({
+        keybindings: { overrides: { 'view.focusMode': ['F10', 'F9'] } },
       })
     })
 
