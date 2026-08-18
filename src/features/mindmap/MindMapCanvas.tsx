@@ -3,6 +3,7 @@ import ReactFlow, {
   Background,
   Controls,
   Edge,
+  ConnectionMode,
   MiniMap,
   Node,
   NodeDragHandler,
@@ -14,10 +15,15 @@ import ReactFlow, {
 } from 'reactflow'
 
 import { MindMapNode, type MindMapNodeData } from './MindMapNode'
+import { MindMapRelationEdge } from './MindMapRelationEdge'
 
 const nodeTypes = {
   custom: MindMapNode,
   root: MindMapNode,
+}
+
+const edgeTypes = {
+  relation: MindMapRelationEdge,
 }
 
 interface MindMapCanvasProps {
@@ -36,7 +42,7 @@ interface MindMapCanvasProps {
   onInit: (instance: ReactFlowInstance) => void
   onConnect: OnConnect
   onEdgeClick: EdgeMouseHandler
-  nodesConnectable: boolean
+  onEdgeDoubleClick: EdgeMouseHandler
 }
 
 export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps>(({
@@ -55,7 +61,7 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
   onInit,
   onConnect,
   onEdgeClick,
-  nodesConnectable,
+  onEdgeDoubleClick,
 }, ref) => {
   return (
     <div ref={ref} className="h-full w-full">
@@ -63,6 +69,7 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
         onNodeContextMenu={onNodeContextMenu}
@@ -75,13 +82,16 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
         onInit={onInit}
         onConnect={onConnect}
         onEdgeClick={onEdgeClick}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         fitViewOptions={{ padding: 0.25 }}
         minZoom={0.1}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={nodesDraggable}
-        nodesConnectable={nodesConnectable}
+        nodesConnectable
+        connectionMode={ConnectionMode.Loose}
+        connectOnClick
         elementsSelectable
         className="text-zinc-700"
       >

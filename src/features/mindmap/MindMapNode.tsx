@@ -24,7 +24,6 @@ export interface MindMapNodeData {
   editing: boolean
   leftBranchCollapsed?: boolean
   rightBranchCollapsed?: boolean
-  relationMode?: boolean
   onToggleBranchSide?: (nodeId: string, side: 'left' | 'right') => void
   onToggleCollapse: (nodeId: string) => void
   onTextChange: (nodeId: string, text: string) => void
@@ -52,13 +51,9 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
 
   const handleBranchSideClick = (event: React.MouseEvent, side: 'left' | 'right') => {
     event.stopPropagation()
-    if (data.relationMode) return
     data.onToggleBranchSide?.(id, side)
   }
-
-  const currentHandleStyle = data.relationMode
-    ? { ...handleStyle, background: '#0F766E', width: 8, height: 8 }
-    : handleStyle
+  const relationHandleStyle = { background: '#0F766E', border: '2px solid #FFFCF5', width: 9, height: 9 }
 
   return (
     <div
@@ -90,22 +85,28 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
       {data.dropState === 'before' && <div className="absolute -top-2 left-2 right-2 h-0.5 rounded bg-emerald-600" />}
       {data.dropState === 'after' && <div className="absolute -bottom-2 left-2 right-2 h-0.5 rounded bg-emerald-600" />}
       {data.invalidDrop && <div className="absolute -top-2 left-2 right-2 h-0.5 rounded bg-rose-500" />}
-      <Handle id="left-target" type="target" position={Position.Left} style={currentHandleStyle} />
+      <Handle id="left-target" type="target" position={Position.Left} style={handleStyle} isConnectable={false} />
       <Handle
         id="left-source"
         type="source"
         position={Position.Left}
-        style={currentHandleStyle}
+        style={handleStyle}
+        isConnectable={false}
         onClick={(event) => handleBranchSideClick(event, 'left')}
       />
-      <Handle id="right-target" type="target" position={Position.Right} style={currentHandleStyle} />
+      <Handle id="right-target" type="target" position={Position.Right} style={handleStyle} isConnectable={false} />
       <Handle
         id="right-source"
         type="source"
         position={Position.Right}
-        style={currentHandleStyle}
+        style={handleStyle}
+        isConnectable={false}
         onClick={(event) => handleBranchSideClick(event, 'right')}
       />
+      <Handle id="relation-top" type="source" position={Position.Top} style={relationHandleStyle} />
+      <Handle id="relation-right" type="source" position={Position.Right} style={relationHandleStyle} />
+      <Handle id="relation-bottom" type="source" position={Position.Bottom} style={relationHandleStyle} />
+      <Handle id="relation-left" type="source" position={Position.Left} style={relationHandleStyle} />
 
       <div className="flex min-h-8 items-center gap-2">
         <button

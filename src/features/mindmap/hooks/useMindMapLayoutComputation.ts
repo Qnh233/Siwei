@@ -59,7 +59,8 @@ interface UseMindMapLayoutComputationParams {
   selectedNodeId: string | null
   editingNodeId: string | null
   searchQuery: string
-  relationMode: boolean
+  editingRelationId: string | null
+  finishRelationEditing: () => void
   forcePreview: MindMapLayoutResult | null
   handlers: MindMapLayoutHandlers
   setNodes: Dispatch<SetStateAction<Node<MindMapNodeData>[]>>
@@ -87,7 +88,8 @@ export function useMindMapLayoutComputation({
   selectedNodeId,
   editingNodeId,
   searchQuery,
-  relationMode,
+  editingRelationId,
+  finishRelationEditing,
   forcePreview,
   handlers,
   setNodes,
@@ -143,7 +145,6 @@ export function useMindMapLayoutComputation({
             agentInsertion: !exportClean && Boolean(previewInsertion),
             dropState: null,
             editing: editingNodeId === node.id,
-            relationMode,
             leftBranchCollapsed: collapsedBranchSides.has(createBranchSideKey(node.id, 'left')),
             rightBranchCollapsed: collapsedBranchSides.has(createBranchSideKey(node.id, 'right')),
             onToggleBranchSide: handlers.toggleBranchSide,
@@ -201,7 +202,7 @@ export function useMindMapLayoutComputation({
     setNodes(renderedNodes)
     setEdges([
       ...layouted.edges,
-      ...buildMindMapRelationEdges(currentDoc.relations, renderedNodes, nodeSizes),
+      ...buildMindMapRelationEdges(currentDoc.relations, renderedNodes, nodeSizes, editingRelationId, finishRelationEditing),
     ])
   }, [
     activeMatchNodeId,
@@ -221,7 +222,8 @@ export function useMindMapLayoutComputation({
     measuredNodeSizeSignature,
     previewLayoutRoot,
     searchQuery,
-    relationMode,
+    editingRelationId,
+    finishRelationEditing,
     selectedNodeId,
     setEdges,
     setFeedback,

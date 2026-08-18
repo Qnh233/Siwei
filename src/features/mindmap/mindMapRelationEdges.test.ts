@@ -16,6 +16,8 @@ describe('buildMindMapRelationEdges', () => {
         id: 'visible',
         sourceNodeId: 'a',
         targetNodeId: 'b',
+        sourceHandle: 'right',
+        targetHandle: 'right',
         direction: 'two-way',
         label: '相关',
         createdAt: 1,
@@ -36,8 +38,9 @@ describe('buildMindMapRelationEdges', () => {
       id: 'relation:visible',
       source: 'a',
       target: 'b',
-      label: '相关',
-      data: { kind: 'relation', relationId: 'visible' },
+      data: { kind: 'relation', relationId: 'visible', label: '相关' },
+      sourceHandle: 'relation-right',
+      targetHandle: 'relation-right',
     })
     expect(edges[0].markerStart).toBeDefined()
     expect(edges[0].markerEnd).toBeDefined()

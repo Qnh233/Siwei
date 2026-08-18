@@ -761,6 +761,28 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().currentDoc?.relations?.[0].label).toBeUndefined()
   })
 
+  it('persists the exact manual relation handles and swaps them when reversing', async () => {
+    await loadFixtureDoc()
+
+    const relationId = useDocumentStore.getState().addRelation('node-1', 'node-2', {
+      sourceHandle: 'right',
+      targetHandle: 'right',
+    })!
+
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0]).toMatchObject({
+      sourceHandle: 'right',
+      targetHandle: 'right',
+    })
+
+    useDocumentStore.getState().reverseRelation(relationId)
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0]).toMatchObject({
+      sourceNodeId: 'node-2',
+      targetNodeId: 'node-1',
+      sourceHandle: 'right',
+      targetHandle: 'right',
+    })
+  })
+
   it('rejects self links and missing relation endpoints without creating history', async () => {
     await loadFixtureDoc()
 

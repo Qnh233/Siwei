@@ -28,11 +28,24 @@ pub struct NodeRelation {
     pub id: String,
     pub source_node_id: String,
     pub target_node_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_handle: Option<NodeRelationHandle>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_handle: Option<NodeRelationHandle>,
     pub direction: NodeRelationDirection,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     pub created_at: u64,
     pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum NodeRelationHandle {
+    Top,
+    Right,
+    Bottom,
+    Left,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -424,7 +437,8 @@ mod tests {
 
     use super::{
         MindMapLayoutNodeSource, MindMapLayoutNodeState, MindMapLayoutPosition, MindMapLayoutState,
-        MindMapLayoutStrategy, NodeRelation, NodeRelationDirection, OutlineDocument, OutlineNode,
+        MindMapLayoutStrategy, NodeRelation, NodeRelationDirection, NodeRelationHandle,
+        OutlineDocument, OutlineNode,
     };
 
     fn sample_doc() -> OutlineDocument {
@@ -565,6 +579,8 @@ mod tests {
             id: "rel_1".to_string(),
             source_node_id: "root_123".to_string(),
             target_node_id: "child_123".to_string(),
+            source_handle: Some(NodeRelationHandle::Right),
+            target_handle: Some(NodeRelationHandle::Right),
             direction: NodeRelationDirection::TwoWay,
             label: Some("相关".to_string()),
             created_at: 1,
@@ -578,6 +594,8 @@ mod tests {
                 "id": "rel_1",
                 "sourceNodeId": "root_123",
                 "targetNodeId": "child_123",
+                "sourceHandle": "right",
+                "targetHandle": "right",
                 "direction": "two-way",
                 "label": "相关",
                 "createdAt": 1,
@@ -593,6 +611,8 @@ mod tests {
             id: "rel_1".to_string(),
             source_node_id: "root_123".to_string(),
             target_node_id: "missing".to_string(),
+            source_handle: None,
+            target_handle: None,
             direction: NodeRelationDirection::OneWay,
             label: None,
             created_at: 1,
@@ -612,6 +632,8 @@ mod tests {
                 id: "rel_1".to_string(),
                 source_node_id: "root_123".to_string(),
                 target_node_id: "child_123".to_string(),
+                source_handle: None,
+                target_handle: None,
                 direction: NodeRelationDirection::OneWay,
                 label: None,
                 created_at: 1,
@@ -621,6 +643,8 @@ mod tests {
                 id: "rel_2".to_string(),
                 source_node_id: "child_123".to_string(),
                 target_node_id: "root_123".to_string(),
+                source_handle: None,
+                target_handle: None,
                 direction: NodeRelationDirection::OneWay,
                 label: None,
                 created_at: 1,

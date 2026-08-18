@@ -6,6 +6,7 @@ import type {
   MindMapLayoutPosition,
   MindMapLayoutState,
   NodeRelationDirection,
+  NodeRelationHandle,
   OutlineDocument,
 } from '../../types/document'
 import type { AgentChangePlan, AgentMindMapInsertNodesParams } from '../agent/agentTypes'
@@ -85,7 +86,11 @@ export interface DocumentState {
   moveNodeToSibling: (sourceNodeId: string, targetNodeId: string) => void
   moveNodeToParent: (sourceNodeId: string, targetParentNodeId: string, targetIndex: number) => void
   commitMindMapLayout: (layout: MindMapLayoutState | Record<string, MindMapLayoutPosition>) => void
-  addRelation: (sourceNodeId: string, targetNodeId: string) => string | null
+  addRelation: (
+    sourceNodeId: string,
+    targetNodeId: string,
+    handles?: { sourceHandle?: NodeRelationHandle; targetHandle?: NodeRelationHandle },
+  ) => string | null
   updateRelation: (relationId: string, changes: { label?: string; direction?: NodeRelationDirection }) => void
   reverseRelation: (relationId: string) => void
   deleteRelation: (relationId: string) => void

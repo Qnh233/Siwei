@@ -89,6 +89,13 @@ export function useMindMapKeyboardShortcuts({
       return
     }
 
+    if (event.key === 'Delete') {
+      event.preventDefault()
+      event.stopPropagation()
+      runAction(selectedNodeId, 'delete')
+      return
+    }
+
     if (event.key === 'Escape') {
       event.preventDefault()
       closeContextMenu()

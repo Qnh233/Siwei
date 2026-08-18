@@ -9,7 +9,7 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
   const { get, set, beginMutation, setHistoryAfterMutation } = context
 
   return {
-    addRelation: (sourceNodeId, targetNodeId) => {
+    addRelation: (sourceNodeId, targetNodeId, handles = {}) => {
       if (sourceNodeId === targetNodeId) return null
       const { currentDoc } = get()
       if (!currentDoc) return null
@@ -48,6 +48,8 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
             id,
             sourceNodeId,
             targetNodeId,
+            sourceHandle: handles.sourceHandle,
+            targetHandle: handles.targetHandle,
             direction: 'one-way',
             createdAt: now,
             updatedAt: now,
@@ -94,7 +96,14 @@ export function createRelationSlice(context: DocumentStoreContext): RelationActi
         currentDoc: {
           ...currentDoc,
           relations: currentDoc.relations?.map((item) => item.id === relationId
-            ? { ...item, sourceNodeId: item.targetNodeId, targetNodeId: item.sourceNodeId, updatedAt: now }
+            ? {
+              ...item,
+              sourceNodeId: item.targetNodeId,
+              targetNodeId: item.sourceNodeId,
+              sourceHandle: item.targetHandle,
+              targetHandle: item.sourceHandle,
+              updatedAt: now,
+            }
             : item),
           updatedAt: now,
         },

@@ -37,9 +37,12 @@ vi.mock('reactflow', async () => {
     onInit?: (instance: { setCenter: ReturnType<typeof vi.fn> }) => void
     onPaneClick?: () => void
     onKeyDown?: (event: React.KeyboardEvent) => void
-    onConnect?: (connection: { source: string; target: string }) => void
+    onConnect?: (connection: { source: string; target: string; sourceHandle?: string; targetHandle?: string }) => void
     onEdgeClick?: (event: React.MouseEvent, edge: { id: string; data?: unknown }) => void
+    onEdgeDoubleClick?: (event: React.MouseEvent, edge: { id: string; data?: unknown }) => void
     nodesConnectable?: boolean
+    connectionMode?: string
+    connectOnClick?: boolean
     children?: React.ReactNode
   }
 
@@ -60,9 +63,12 @@ vi.mock('reactflow', async () => {
       onKeyDown,
       onConnect,
       onEdgeClick,
+      onEdgeDoubleClick,
       children,
       nodesDraggable,
       nodesConnectable,
+      connectionMode,
+      connectOnClick,
     }: MockReactFlowProps) => {
       React.useEffect(() => {
         onInit?.({ setCenter: vi.fn() })
@@ -73,6 +79,8 @@ vi.mock('reactflow', async () => {
           data-testid="react-flow"
           data-nodes-draggable={String(nodesDraggable)}
           data-nodes-connectable={String(nodesConnectable)}
+          data-connection-mode={connectionMode}
+          data-connect-on-click={String(connectOnClick)}
           tabIndex={0}
           onClick={onPaneClick}
           onKeyDown={onKeyDown}
@@ -146,9 +154,14 @@ vi.mock('reactflow', async () => {
               key={edge.id}
               type="button"
               data-testid={`flow-edge-${edge.id}`}
+              data-editing={String(Boolean((edge.data as { editing?: boolean } | undefined)?.editing))}
               onClick={(event) => {
                 event.stopPropagation()
                 onEdgeClick?.(event, edge)
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation()
+                onEdgeDoubleClick?.(event, edge)
               }}
             >
               {edge.label ?? edge.id}
@@ -160,7 +173,12 @@ vi.mock('reactflow', async () => {
               data-testid="connect-node-1-node-2"
               onClick={(event) => {
                 event.stopPropagation()
-                onConnect?.({ source: 'node-1', target: 'node-2' })
+                onConnect?.({
+                  source: 'node-1',
+                  target: 'node-2',
+                  sourceHandle: 'relation-right',
+                  targetHandle: 'relation-right',
+                })
               }}
             >
               connect
@@ -173,8 +191,9 @@ vi.mock('reactflow', async () => {
     Handle: ({ id, onClick }: { id?: string; onClick?: React.MouseEventHandler }) => (
       <span data-testid={`flow-handle-${id}`} onClick={onClick} />
     ),
-    Position: { Left: 'left', Right: 'right' },
+    Position: { Top: 'top', Left: 'left', Right: 'right', Bottom: 'bottom' },
     MarkerType: { ArrowClosed: 'arrowclosed' },
+    ConnectionMode: { Loose: 'loose' },
     MiniMap: () => <div data-testid="flow-minimap" />,
     Controls: () => <div data-testid="flow-controls" />,
     Background: () => <div data-testid="flow-background" />,
@@ -268,8 +287,15 @@ describe('MindMapView', () => {
     render(<MindMapView />)
     const beforeTree = useDocumentStore.getState().currentDoc?.root
 
-    fireEvent.click(screen.getByRole('button', { name: '关联' }))
     expect(screen.getByTestId('react-flow')).toHaveAttribute('data-nodes-connectable', 'true')
+    expect(screen.getByTestId('react-flow')).toHaveAttribute('data-connection-mode', 'loose')
+    expect(screen.getByTestId('react-flow')).toHaveAttribute('data-connect-on-click', 'true')
+    expect(screen.queryByRole('button', { name: '关联' })).not.toBeInTheDocument()
+    const firstNode = within(screen.getByTestId('flow-node-node-1'))
+    expect(firstNode.getByTestId('flow-handle-relation-top')).toBeInTheDocument()
+    expect(firstNode.getByTestId('flow-handle-relation-right')).toBeInTheDocument()
+    expect(firstNode.getByTestId('flow-handle-relation-bottom')).toBeInTheDocument()
+    expect(firstNode.getByTestId('flow-handle-relation-left')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('connect-node-1-node-2'))
 
     const relationEditor = screen.getByRole('dialog', { name: '编辑节点关联' })
@@ -284,11 +310,45 @@ describe('MindMapView', () => {
       expect(useDocumentStore.getState().currentDoc?.relations?.[0]).toMatchObject({
         sourceNodeId: 'node-1',
         targetNodeId: 'node-2',
+        sourceHandle: 'right',
+        targetHandle: 'right',
         direction: 'two-way',
         label: '依赖',
       })
     })
     expect(useDocumentStore.getState().currentDoc?.root).toEqual(beforeTree)
+  })
+
+  it('starts inline relation label editing from edge double click', async () => {
+    const doc = createDocument()
+    doc.version = 3
+    doc.relations = [{
+      id: 'rel-1',
+      sourceNodeId: 'node-1',
+      targetNodeId: 'node-2',
+      sourceHandle: 'right',
+      targetHandle: 'right',
+      direction: 'one-way',
+      createdAt: 1,
+      updatedAt: 1,
+    }]
+    useDocumentStore.setState({ currentDoc: doc })
+    render(<MindMapView />)
+
+    const edge = await screen.findByTestId('flow-edge-relation:rel-1')
+    fireEvent.doubleClick(edge)
+
+    await waitFor(() => expect(edge).toHaveAttribute('data-editing', 'true'))
+  })
+
+  it('uses Delete to request deletion of the selected mind map node', () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByTestId('flow-node-node-1'))
+    fireEvent.keyDown(screen.getByTestId('react-flow'), { key: 'Delete' })
+
+    expect(screen.getByRole('dialog', { name: '删除节点' })).toBeInTheDocument()
+    expect(useDocumentStore.getState().currentDoc?.root.children.map((node) => node.id)).toContain('node-1')
   })
 
   it('starts inline editing from direct printable input on a selected node', () => {
