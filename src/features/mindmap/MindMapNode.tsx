@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check, ChevronDown, ChevronRight } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Plus } from 'lucide-react'
 import { Handle, NodeProps, Position } from 'reactflow'
 import { MindMapInlineEditor } from './MindMapInlineEditor'
 import type { AgentNodePreview } from '../agent/agentTypes'
@@ -58,7 +58,7 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
   return (
     <div
       data-testid={`mindmap-node-${id}`}
-      className={`relative min-w-[170px] max-w-[240px] rounded-xl border-2 px-3 py-2 text-center shadow-fabric transition-all duration-200 ${
+      className={`group relative min-w-[170px] max-w-[240px] rounded-xl border-2 px-3 py-2 text-center shadow-fabric transition-all duration-200 ${
         isAgentDeleting
           ? 'border-rose-300 bg-rose-50 ring-4 ring-rose-500/10'
         : data.agentInsertion
@@ -107,6 +107,24 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
       <Handle id="relation-right" type="source" position={Position.Right} style={relationHandleStyle} />
       <Handle id="relation-bottom" type="source" position={Position.Bottom} style={relationHandleStyle} />
       <Handle id="relation-left" type="source" position={Position.Left} style={relationHandleStyle} />
+
+      {!data.exportClean && !data.agentInsertion && (
+        <button
+          type="button"
+          aria-label="添加子节点"
+          title="添加子节点"
+          className={`nodrag nopan absolute -right-9 top-1/2 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-amber-700/20 bg-[#FFFCF5] text-amber-800 shadow-sm transition-all duration-150 hover:scale-110 hover:!border-amber-700/35 hover:!bg-amber-50 hover:!opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+            selected ? 'scale-100 opacity-70' : 'scale-90 opacity-[0.06] group-hover:scale-100 group-hover:opacity-45'
+          }`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+            data.onInsertChild(id)
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.25} />
+        </button>
+      )}
 
       <div className="flex min-h-8 items-center gap-2">
         <button

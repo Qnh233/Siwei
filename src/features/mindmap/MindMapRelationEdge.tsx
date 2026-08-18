@@ -77,6 +77,9 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
   const curveOffsetRef = React.useRef(curveOffset)
   const draggingRef = React.useRef(false)
   const cleanupDragRef = React.useRef<(() => void) | null>(null)
+  const haloPathRef = React.useRef<SVGPathElement | null>(null)
+  const bendControlRef = React.useRef<HTMLButtonElement | null>(null)
+  const labelContainerRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
     setLabel(data?.label ?? '')
@@ -101,6 +104,25 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
     data.onFinishEdit?.()
   }
 
+  const applyCurvePreview = (nextOffset: NodeRelationCurveOffset) => {
+    const [nextPath, nextLabelX, nextLabelY, nextBendX, nextBendY] = getMindMapRelationPath({
+      ...pathParams,
+      curveOffset: nextOffset,
+    })
+    haloPathRef.current?.setAttribute('d', nextPath)
+
+    const mainPath = document.getElementById(id)
+    mainPath?.setAttribute('d', nextPath)
+    mainPath?.parentElement?.querySelector('.react-flow__edge-interaction')?.setAttribute('d', nextPath)
+
+    if (bendControlRef.current) {
+      bendControlRef.current.style.transform = `translate(-50%, -50%) translate(${nextBendX}px, ${nextBendY}px)`
+    }
+    if (labelContainerRef.current) {
+      labelContainerRef.current.style.transform = `translate(-50%, -50%) translate(${nextLabelX}px, ${nextLabelY}px)`
+    }
+  }
+
   const startCurveDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
@@ -113,7 +135,8 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
         y: Math.round(point.y - defaultBendY),
       }
       curveOffsetRef.current = next
-      setCurveOffset(next)
+      // 拖动过程直接同步 SVG 和 portal DOM，避免 React state/portal 两条渲染链产生视觉追赶。
+      applyCurvePreview(next)
     }
     const cleanup = () => {
       window.removeEventListener('pointermove', handleMove)
@@ -123,6 +146,7 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
     const handleUp = () => {
       draggingRef.current = false
       cleanup()
+      setCurveOffset(curveOffsetRef.current)
       if (data?.relationId && !offsetsEqual(curveOffsetRef.current, data.curveOffset)) {
         useDocumentStore.getState().updateRelation(data.relationId, { curveOffset: curveOffsetRef.current })
       }
@@ -137,6 +161,7 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
   return (
     <>
       <path
+        ref={haloPathRef}
         d={path}
         fill="none"
         pointerEvents="none"
@@ -152,6 +177,7 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
       />
       <EdgeLabelRenderer>
         <button
+          ref={bendControlRef}
           type="button"
           aria-label="调整关系线弧度"
           title="拖动调整关系线弧度"
@@ -164,6 +190,7 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
           }}
         />
         <div
+          ref={labelContainerRef}
           className="nodrag nopan absolute"
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, pointerEvents: data?.editing ? 'all' : 'none' }}
         >

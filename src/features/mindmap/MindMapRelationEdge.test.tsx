@@ -116,7 +116,7 @@ describe('MindMapRelationEdge', () => {
     expect(screen.getByRole('button', { name: '调整关系线弧度' })).toBeInTheDocument()
   })
 
-  it('commits one curve offset edit when the bend point drag finishes', () => {
+  it('updates the bend point immediately while dragging and commits one curve edit when released', () => {
     const props = {
       id: 'relation:rel-1',
       sourceX: 0,
@@ -132,6 +132,12 @@ describe('MindMapRelationEdge', () => {
     const control = screen.getByRole('button', { name: '调整关系线弧度' })
     fireEvent.pointerDown(control, { clientX: 100, clientY: 0 })
     fireEvent.pointerMove(window, { clientX: 100, clientY: 70 })
+
+    expect(control).toHaveStyle({
+      transform: 'translate(-50%, -50%) translate(100px, 70px)',
+    })
+    expect(useDocumentStore.getState().currentDoc?.relations?.[0].curveOffset).toBeUndefined()
+
     fireEvent.pointerUp(window)
 
     expect(useDocumentStore.getState().currentDoc?.relations?.[0].curveOffset).toEqual({ x: 0, y: 70 })
