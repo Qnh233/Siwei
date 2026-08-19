@@ -130,6 +130,8 @@ describe('MindMapRelationEdge', () => {
     render(<MindMapRelationEdge {...props} />)
 
     const control = screen.getByRole('button', { name: '调整关系线弧度' })
+    expect(control.className).not.toContain('transition-transform')
+    expect(control.className).not.toContain('hover:scale-')
     fireEvent.pointerDown(control, { clientX: 100, clientY: 0 })
     fireEvent.pointerMove(window, { clientX: 100, clientY: 70 })
 

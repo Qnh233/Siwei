@@ -181,7 +181,7 @@ export const MindMapRelationEdge: React.FC<EdgeProps<MindMapRelationEdgeData>> =
           type="button"
           aria-label="调整关系线弧度"
           title="拖动调整关系线弧度"
-          className="nodrag nopan absolute z-10 h-3 w-3 cursor-move rounded-full border-2 border-teal-700 bg-[#FFFCF5] shadow-sm transition-transform hover:scale-125"
+          className="nodrag nopan absolute z-10 h-3 w-3 cursor-move rounded-full border-2 border-teal-700 bg-[#FFFCF5] shadow-sm will-change-transform transition-colors hover:border-teal-500 hover:bg-teal-50 hover:shadow-md"
           style={{ transform: `translate(-50%, -50%) translate(${bendX}px, ${bendY}px)`, pointerEvents: 'all' }}
           onPointerDown={startCurveDrag}
           onDoubleClick={(event) => {
