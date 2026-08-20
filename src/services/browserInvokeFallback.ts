@@ -29,6 +29,7 @@ let recentDocs: RecentDocItem[] = []
 let libraryDocs: LibraryDocumentItem[] = []
 let refreshStatus: LibraryRefreshStatus | null = null
 let settings: AppSettings = DEFAULT_SETTINGS
+const reservedDocumentPaths = new Set<string>()
 let agentStatus: AgentStatus = {
   available: false,
   running: false,
@@ -78,6 +79,20 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
     case 'open_file_dialog':
     case 'save_file_dialog':
       return null as T
+    case 'open_directory_dialog':
+      return settings.documentLibraryPath as T
+    case 'prepare_new_document_path': {
+      const title = sanitizeFileStem(String(args?.title ?? '未命名文档'))
+      const directory = settings.documentLibraryPath.replace(/[\\/]+$/, '')
+      let suffix = 1
+      let path = `${directory}/${title}.siwei.json`
+      while (reservedDocumentPaths.has(path) || libraryDocs.some((doc) => doc.path === path)) {
+        suffix += 1
+        path = `${directory}/${title} (${suffix}).siwei.json`
+      }
+      reservedDocumentPaths.add(path)
+      return path as T
+    }
     case 'search_document': {
       const doc = (args?.doc as OutlineDocument | undefined) ?? currentDoc
       const query = String(args?.query ?? '').trim()
@@ -274,6 +289,11 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
     default:
       throw new Error(`Unsupported browser fallback command: ${command}`)
   }
+}
+
+function sanitizeFileStem(value: string): string {
+  const sanitized = value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().replace(/[. ]+$/g, '')
+  return sanitized || '未命名文档'
 }
 
 function createPreview(doc: OutlineDocument): ImportPreview {

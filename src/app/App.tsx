@@ -48,6 +48,7 @@ export const App: React.FC = () => {
   const canUndo = useDocumentStore((s) => s.canUndo)
   const canRedo = useDocumentStore((s) => s.canRedo)
   const saveDoc = useDocumentStore((s) => s.saveDoc)
+  const saveDocAs = useDocumentStore((s) => s.saveDocAs)
   const undo = useDocumentStore((s) => s.undo)
   const redo = useDocumentStore((s) => s.redo)
   const exportDoc = useDocumentStore((s) => s.exportDoc)
@@ -163,6 +164,7 @@ export const App: React.FC = () => {
             onOpenExport={() => setIsExportOpen(true)}
             onOpenPresentation={handleOpenPresentation}
             onSave={saveDoc}
+            onSaveAs={saveDocAs}
           />
         )}
 
@@ -222,6 +224,7 @@ export const App: React.FC = () => {
         onNewDoc={handleNewDoc}
         onImport={() => setIsImportOpen(true)}
         onExport={() => setIsExportOpen(true)}
+        onSaveAs={() => void saveDocAs()}
         onOpenPresentation={handleOpenPresentation}
       />
 

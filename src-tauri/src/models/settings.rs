@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 pub struct AppSettings {
     pub auto_save_enabled: bool,
     pub auto_save_interval_ms: u64,
+    #[serde(default)]
+    pub document_library_path: String,
     pub default_view_mode: DefaultViewMode,
     pub sidebar_collapsed: bool,
     #[serde(default = "default_theme_mode")]
@@ -84,6 +86,7 @@ impl Default for AppSettings {
         Self {
             auto_save_enabled: true,
             auto_save_interval_ms: DEFAULT_AUTO_SAVE_INTERVAL_MS,
+            document_library_path: String::new(),
             default_view_mode: DefaultViewMode::Outline,
             sidebar_collapsed: false,
             theme: ThemeMode::System,

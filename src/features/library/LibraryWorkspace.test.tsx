@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useToastStore } from '../../components/common/Toast'
+import { useDocumentStore } from '../document/documentStore'
 import * as api from '../../services/siweiApi'
 import { useLibraryStore } from './libraryStore'
 import { LibraryWorkspace } from './LibraryWorkspace'
@@ -73,6 +74,7 @@ describe('LibraryWorkspace', () => {
       isLoading: false,
       error: null,
     })
+    useDocumentStore.setState({ saveStatus: 'idle' })
     apiMock.queryLibraryDocs.mockResolvedValue({ items: [failedDoc], hasMore: false, total: 1 })
   })
 
@@ -88,6 +90,22 @@ describe('LibraryWorkspace', () => {
     expect(useToastStore.getState().toasts[0]).toMatchObject({
       type: 'info',
       message: '当前版本暂不支持打开文件位置，可先打开文档或复制路径定位。',
+    })
+  })
+
+  it('reloads documents after the current document finishes saving', async () => {
+    render(<LibraryWorkspace />)
+
+    await waitFor(() => {
+      expect(apiMock.queryLibraryDocs).toHaveBeenCalledTimes(1)
+    })
+
+    act(() => {
+      useDocumentStore.setState({ saveStatus: 'saved' })
+    })
+
+    await waitFor(() => {
+      expect(apiMock.queryLibraryDocs).toHaveBeenCalledTimes(2)
     })
   })
 })

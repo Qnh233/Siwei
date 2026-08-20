@@ -11,6 +11,7 @@ import * as api from '../services/siweiApi'
 const appSettings: AppSettings = {
   autoSaveEnabled: true,
   autoSaveIntervalMs: 1500,
+  documentLibraryPath: '/Documents/Siwei',
   defaultViewMode: 'mindmap',
   sidebarCollapsed: false,
   theme: 'system',

@@ -10,6 +10,7 @@ pub mod settings;
 pub fn handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         document::new_document,
+        document::prepare_new_document_path,
         document::save_document,
         document::load_document,
         import_export::export_markdown,
@@ -43,6 +44,7 @@ pub fn handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
         library::remove_missing_library_docs,
         library::toggle_library_task,
         dialogs::open_file_dialog,
+        dialogs::open_directory_dialog,
         dialogs::save_file_dialog,
         search::search_document,
         settings::get_settings,

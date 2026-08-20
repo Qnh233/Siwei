@@ -7,10 +7,20 @@ import { useWorkspaceStore } from '../../app/workspaceStore'
 import { useSettingsStore } from './settingsStore'
 import { SettingsPage } from './SettingsPage'
 import type { AppSettings } from '../../types/settings'
+import * as api from '../../services/siweiApi'
+
+vi.mock('../../services/siweiApi', () => ({
+  openDirectoryDialog: vi.fn(),
+  agentSaveApiKey: vi.fn(),
+  agentDeleteApiKey: vi.fn(),
+}))
+
+const apiMock = vi.mocked(api)
 
 const baseSettings: AppSettings = {
   autoSaveEnabled: true,
   autoSaveIntervalMs: 1500,
+  documentLibraryPath: '/Documents/Siwei',
   defaultViewMode: 'outline',
   sidebarCollapsed: false,
   theme: 'system',
@@ -64,6 +74,24 @@ describe('SettingsPage', () => {
       expect(updateSettings).toHaveBeenCalledWith({ autoSaveEnabled: false })
       expect(updateSettings).toHaveBeenCalledWith({ defaultViewMode: 'mindmap' })
     })
+
+    updateSettings.mockRestore()
+  })
+
+  it('updates the default document library directory from the folder picker', async () => {
+    const updateSettings = vi.spyOn(useSettingsStore.getState(), 'updateSettings')
+      .mockImplementation(async (patch) => {
+        useSettingsStore.setState((state) => ({ settings: { ...state.settings, ...patch } }))
+      })
+    apiMock.openDirectoryDialog.mockResolvedValueOnce('D:/Siwei Library')
+
+    render(<SettingsPage />)
+    fireEvent.click(screen.getByRole('button', { name: '选择文档库目录' }))
+
+    await waitFor(() => {
+      expect(updateSettings).toHaveBeenCalledWith({ documentLibraryPath: 'D:/Siwei Library' })
+    })
+    expect(screen.getByDisplayValue('D:/Siwei Library')).toBeInTheDocument()
 
     updateSettings.mockRestore()
   })

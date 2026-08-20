@@ -10,6 +10,7 @@ import { cloneOutlineNodesWithRelationMap, remapNodeRelations } from '../nodeRel
 import type { DocumentStoreContext } from '../documentStoreContext'
 import type { DocumentState } from '../documentStoreTypes'
 import { findPath, updateNodeAtPath } from '../../../utils/tree'
+import { useRecentStore } from '../recentStore'
 
 type PersistenceActions = Pick<
   DocumentState,
@@ -17,6 +18,7 @@ type PersistenceActions = Pick<
   | 'newDoc'
   | 'loadDoc'
   | 'saveDoc'
+  | 'saveDocAs'
   | 'exportDoc'
   | 'importDoc'
   | 'applyImportPreview'
@@ -33,7 +35,8 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
       return window.confirm('当前文档有未保存的修改。确定要放弃这些修改吗？')
     },
 
-    newDoc: async () => {
+    newDoc: async (options) => {
+      const shouldPersist = options?.persist ?? true
       try {
         const doc = await api.newDocument()
         const collapsedIds = new Set<string>()
@@ -44,16 +47,22 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
         set({
           currentDoc: doc,
           currentFilePath: null,
-          isDirty: false,
+          isDirty: shouldPersist,
           collapsedNodeIds: collapsedIds,
           selectedNodeId: firstNodeId,
           focusedNodeId: null,
           focusRequestSeq: 0,
           saveStatus: 'idle',
-          ...clearHistoryState(doc, firstNodeId, collapsedIds, { isDirty: false }),
+          ...clearHistoryState(doc, firstNodeId, collapsedIds, { isDirty: shouldPersist }),
         })
+
+        if (shouldPersist) {
+          const saved = await get().saveDoc()
+          if (!saved) throw new Error('新建文档保存失败')
+        }
       } catch (error) {
         console.error('Error creating new document:', error)
+        throw error
       }
     },
 
@@ -80,7 +89,7 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
           ...clearHistoryState(doc, firstNodeId, collapsedIds, { isDirty: false }),
         })
 
-        await api.addRecentDoc({
+        await useRecentStore.getState().addRecent({
           path,
           title: doc.title || '未命名文档',
           lastOpenedAt: Date.now(),
@@ -97,9 +106,7 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
 
       let path = customPath || state.currentFilePath
       if (!path) {
-        const defaultName = `${state.currentDoc.title || '未命名文档'}.siwei.json`
-        path = await api.saveFileDialog(defaultName)
-        if (!path) return false
+        path = await api.prepareNewDocumentPath(state.currentDoc.title || '未命名文档')
       }
 
       set({ saveStatus: 'saving' })
@@ -119,6 +126,12 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
         })
 
         await api.saveDocument(path, updatedDoc)
+
+        try {
+          await api.refreshLibraryDoc(path)
+        } catch (error) {
+          console.error('Error refreshing library index after save:', error)
+        }
 
         set((latestState) => {
           const cleanSnapshot = createSnapshot(updatedDoc, latestState.selectedNodeId, latestState.collapsedNodeIds)
@@ -145,14 +158,10 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
           }
         })
 
-        await api.addRecentDoc({
+        await useRecentStore.getState().addRecent({
           path,
           title: updatedDoc.title || '未命名文档',
           lastOpenedAt: Date.now(),
-        })
-
-        Promise.resolve(api.refreshLibraryDoc(path)).catch((error) => {
-          console.error('Error refreshing library index after save:', error)
         })
 
         setTimeout(() => {
@@ -167,6 +176,16 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
         set({ saveStatus: 'error' })
         return false
       }
+    },
+
+    saveDocAs: async () => {
+      const { currentDoc } = get()
+      if (!currentDoc) return false
+
+      const defaultName = `${currentDoc.title || '未命名文档'}.siwei.json`
+      const path = await api.saveFileDialog(defaultName)
+      if (!path) return false
+      return get().saveDoc(path)
     },
 
     exportDoc: async (path, format) => {

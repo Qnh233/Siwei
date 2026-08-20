@@ -64,9 +64,10 @@ export interface DocumentState {
   activeTextEditSession: TextEditSession | null
   outlineSelection: OutlineSelectionState
 
-  newDoc: () => Promise<void>
+  newDoc: (options?: { persist?: boolean }) => Promise<void>
   loadDoc: (path: string) => Promise<void>
   saveDoc: (customPath?: string | null) => Promise<boolean>
+  saveDocAs: () => Promise<boolean>
   exportDoc: (path: string, format: ExportFormat) => Promise<void>
   importDoc: (path: string, format: ImportFormat) => Promise<void>
   applyImportPreview: (preview: ImportPreview, options: ImportApplyOptions) => void

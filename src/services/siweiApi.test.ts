@@ -165,6 +165,7 @@ describe('siweiApi', () => {
     const settings: AppSettings = {
       autoSaveEnabled: false,
       autoSaveIntervalMs: 2500,
+      documentLibraryPath: 'D:/Siwei Library',
       defaultViewMode: 'split',
       sidebarCollapsed: true,
       theme: 'dark',
@@ -187,6 +188,16 @@ describe('siweiApi', () => {
 
     expect(invokeMock).toHaveBeenNthCalledWith(1, 'get_settings', undefined)
     expect(invokeMock).toHaveBeenNthCalledWith(2, 'update_settings', { settings })
+  })
+
+  it('wraps document library lifecycle commands', async () => {
+    invokeMock.mockResolvedValue('D:/Siwei Library/未命名文档.siwei.json')
+
+    await api.openDirectoryDialog()
+    await api.prepareNewDocumentPath('未命名文档')
+
+    expect(invokeMock).toHaveBeenNthCalledWith(1, 'open_directory_dialog', undefined)
+    expect(invokeMock).toHaveBeenNthCalledWith(2, 'prepare_new_document_path', { title: '未命名文档' })
   })
 
   it('wraps agent commands with stable camelCase payload fields', async () => {

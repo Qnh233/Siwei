@@ -1,6 +1,6 @@
 import React from 'react'
 import { Command } from 'cmdk'
-import { Search, FileText, Plus, Columns, Grid, List, Moon, Sun, Monitor, Maximize, Presentation } from 'lucide-react'
+import { Search, FileText, Plus, Columns, Grid, List, Moon, Sun, Monitor, Maximize, Presentation, SaveAll } from 'lucide-react'
 import { useSettingsStore } from '../../features/settings/settingsStore'
 import { useDocumentStore } from '../../features/document/documentStore'
 import { useWorkspaceStore } from '../../app/workspaceStore'
@@ -11,6 +11,7 @@ interface CommandPaletteProps {
   onNewDoc: () => void
   onImport: () => void
   onExport: () => void
+  onSaveAs: () => void
   onOpenPresentation: () => void
 }
 
@@ -20,6 +21,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onNewDoc,
   onImport,
   onExport,
+  onSaveAs,
   onOpenPresentation,
 }) => {
   const setViewMode = useDocumentStore((s) => s.setViewMode)
@@ -116,6 +118,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 className="flex items-center px-2 py-2 text-sm rounded-md text-zinc-700 dark:text-zinc-300 aria-selected:bg-zinc-100 dark:aria-selected:bg-zinc-800 aria-selected:text-zinc-900 dark:aria-selected:text-white cursor-pointer"
               >
                 <FileText size={16} className="mr-2" /> 导出当前文档...
+              </Command.Item>
+              <Command.Item
+                onSelect={() => { onSaveAs(); onClose() }}
+                className="flex items-center px-2 py-2 text-sm rounded-md text-zinc-700 dark:text-zinc-300 aria-selected:bg-zinc-100 dark:aria-selected:bg-zinc-800 aria-selected:text-zinc-900 dark:aria-selected:text-white cursor-pointer"
+              >
+                <SaveAll size={16} className="mr-2" /> 另存为...
               </Command.Item>
             </Command.Group>
 

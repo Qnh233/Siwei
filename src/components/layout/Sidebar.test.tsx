@@ -9,6 +9,7 @@ import type { AppSettings } from '../../types/settings'
 const sidebarSettings: AppSettings = {
   autoSaveEnabled: true,
   autoSaveIntervalMs: 1500,
+  documentLibraryPath: '/Documents/Siwei',
   defaultViewMode: 'outline',
   sidebarCollapsed: false,
   theme: 'system',

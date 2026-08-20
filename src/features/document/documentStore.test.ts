@@ -15,6 +15,7 @@ vi.mock('../../services/siweiApi', () => ({
   previewImportDocument: vi.fn(),
   addRecentDoc: vi.fn(),
   saveFileDialog: vi.fn(),
+  prepareNewDocumentPath: vi.fn(),
   refreshLibraryDoc: vi.fn(),
 }))
 
@@ -85,6 +86,68 @@ describe('documentStore', () => {
     expect(apiMock.refreshLibraryDoc).toHaveBeenCalledWith('demo.siwei.json')
   })
 
+  it('persists a user-created document directly into the default library', async () => {
+    const doc = createDocument()
+    apiMock.newDocument.mockResolvedValueOnce(doc)
+    apiMock.prepareNewDocumentPath.mockResolvedValueOnce('/Documents/Siwei/测试文档.siwei.json')
+    apiMock.saveDocument.mockResolvedValueOnce(undefined)
+    apiMock.addRecentDoc.mockResolvedValueOnce(undefined)
+
+    await useDocumentStore.getState().newDoc()
+
+    expect(apiMock.prepareNewDocumentPath).toHaveBeenCalledWith(doc.title)
+    expect(apiMock.saveDocument).toHaveBeenCalledWith('/Documents/Siwei/测试文档.siwei.json', expect.any(Object))
+    expect(apiMock.refreshLibraryDoc).toHaveBeenCalledWith('/Documents/Siwei/测试文档.siwei.json')
+    expect(useDocumentStore.getState().currentFilePath).toBe('/Documents/Siwei/测试文档.siwei.json')
+    expect(useDocumentStore.getState().isDirty).toBe(false)
+  })
+
+  it('keeps startup scratch documents out of the library until explicitly saved', async () => {
+    const doc = createDocument()
+    apiMock.newDocument.mockResolvedValueOnce(doc)
+
+    await useDocumentStore.getState().newDoc({ persist: false })
+
+    expect(apiMock.prepareNewDocumentPath).not.toHaveBeenCalled()
+    expect(apiMock.saveDocument).not.toHaveBeenCalled()
+    expect(useDocumentStore.getState().currentFilePath).toBeNull()
+  })
+
+  it('saves a pathless scratch document into the default library without opening save-as', async () => {
+    useDocumentStore.setState({
+      currentDoc: createDocument(),
+      currentFilePath: null,
+      isDirty: true,
+    })
+    apiMock.prepareNewDocumentPath.mockResolvedValueOnce('/Documents/Siwei/测试文档.siwei.json')
+    apiMock.saveDocument.mockResolvedValueOnce(undefined)
+    apiMock.addRecentDoc.mockResolvedValueOnce(undefined)
+
+    const saved = await useDocumentStore.getState().saveDoc()
+
+    expect(saved).toBe(true)
+    expect(apiMock.saveFileDialog).not.toHaveBeenCalled()
+    expect(apiMock.saveDocument).toHaveBeenCalledWith('/Documents/Siwei/测试文档.siwei.json', expect.any(Object))
+  })
+
+  it('uses the save dialog only for explicit save-as', async () => {
+    useDocumentStore.setState({
+      currentDoc: createDocument(),
+      currentFilePath: '/Documents/Siwei/测试文档.siwei.json',
+      isDirty: false,
+    })
+    apiMock.saveFileDialog.mockResolvedValueOnce('D:/Notes/测试文档.siwei.json')
+    apiMock.saveDocument.mockResolvedValueOnce(undefined)
+    apiMock.addRecentDoc.mockResolvedValueOnce(undefined)
+
+    const saved = await useDocumentStore.getState().saveDocAs()
+
+    expect(saved).toBe(true)
+    expect(apiMock.saveFileDialog).toHaveBeenCalledWith('测试文档.siwei.json')
+    expect(apiMock.saveDocument).toHaveBeenCalledWith('D:/Notes/测试文档.siwei.json', expect.any(Object))
+    expect(useDocumentStore.getState().currentFilePath).toBe('D:/Notes/测试文档.siwei.json')
+  })
+
   it('keeps save successful when library index refresh fails', async () => {
     useDocumentStore.setState({
       currentDoc: createDocument(),
@@ -101,7 +164,7 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().saveStatus).toBe('saved')
   })
 
-  it('does not change path or dirty state when save dialog is cancelled', async () => {
+  it('does not change path or dirty state when save-as dialog is cancelled', async () => {
     useDocumentStore.setState({
       currentDoc: createDocument(),
       currentFilePath: null,
@@ -109,7 +172,7 @@ describe('documentStore', () => {
     })
     apiMock.saveFileDialog.mockResolvedValueOnce(null)
 
-    const saved = await useDocumentStore.getState().saveDoc()
+    const saved = await useDocumentStore.getState().saveDocAs()
 
     expect(saved).toBe(false)
     expect(apiMock.saveDocument).not.toHaveBeenCalled()

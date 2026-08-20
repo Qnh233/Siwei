@@ -123,6 +123,14 @@ export function saveFileDialog(defaultName: string): Promise<string | null> {
   return callCommand('save_file_dialog', { defaultName })
 }
 
+export function openDirectoryDialog(): Promise<string | null> {
+  return callCommand('open_directory_dialog')
+}
+
+export function prepareNewDocumentPath(title: string): Promise<string> {
+  return callCommand('prepare_new_document_path', { title })
+}
+
 export function searchDocument(
   doc: OutlineDocument,
   query: string,

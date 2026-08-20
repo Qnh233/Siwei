@@ -54,6 +54,16 @@ pub fn update_settings(
     Ok(settings)
 }
 
+pub fn with_default_document_library_path(
+    mut settings: AppSettings,
+    default_path: impl AsRef<Path>,
+) -> AppSettings {
+    if settings.document_library_path.trim().is_empty() {
+        settings.document_library_path = default_path.as_ref().to_string_lossy().to_string();
+    }
+    settings
+}
+
 fn settings_path(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join(SETTINGS_FILE)
 }
@@ -67,7 +77,7 @@ mod tests {
         AppSettings,
     };
 
-    use super::{get_settings, update_settings};
+    use super::{get_settings, update_settings, with_default_document_library_path};
 
     #[test]
     fn returns_defaults_when_settings_file_is_missing() {
@@ -84,6 +94,7 @@ mod tests {
         let settings = AppSettings {
             auto_save_enabled: false,
             auto_save_interval_ms: 2_500,
+            document_library_path: "D:\\Siwei".to_string(),
             default_view_mode: DefaultViewMode::Split,
             sidebar_collapsed: true,
             theme: ThemeMode::Dark,
@@ -123,6 +134,7 @@ mod tests {
         let settings = get_settings(dir.path()).unwrap();
 
         assert_eq!(settings.default_view_mode, DefaultViewMode::Split);
+        assert!(settings.document_library_path.is_empty());
         assert_eq!(settings.theme, ThemeMode::System);
         assert!(!settings.focus_mode);
         assert!(!settings.experimental_mind_map_layout_engine);
@@ -166,5 +178,18 @@ mod tests {
             .to_string();
 
         assert!(error.contains("自动保存延迟必须在 500-10000 毫秒之间"));
+    }
+
+    #[test]
+    fn fills_legacy_empty_document_library_path_with_platform_default() {
+        let settings = with_default_document_library_path(
+            AppSettings::default(),
+            std::path::Path::new("C:\\Users\\tester\\Documents\\Siwei"),
+        );
+
+        assert_eq!(
+            settings.document_library_path,
+            "C:\\Users\\tester\\Documents\\Siwei"
+        );
     }
 }

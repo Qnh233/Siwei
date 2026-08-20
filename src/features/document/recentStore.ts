@@ -22,8 +22,9 @@ export const useRecentStore = create<RecentState>((set) => ({
   addRecent: async (item) => {
     try {
       await api.addRecentDoc(item)
-      const items = await api.getRecentDocs()
-      set({ recentDocs: items })
+      set((state) => ({
+        recentDocs: [item, ...state.recentDocs.filter((recent) => recent.path !== item.path)].slice(0, 20),
+      }))
     } catch (error) {
       console.error('Error adding recent doc:', error)
     }

@@ -17,6 +17,7 @@ export interface AgentSettings {
 export interface AppSettings {
   autoSaveEnabled: boolean
   autoSaveIntervalMs: number
+  documentLibraryPath: string
   defaultViewMode: DefaultViewMode
   sidebarCollapsed: boolean
   theme: ThemeMode
@@ -29,6 +30,7 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   autoSaveEnabled: true,
   autoSaveIntervalMs: 1500,
+  documentLibraryPath: '/Documents/Siwei',
   defaultViewMode: 'outline',
   sidebarCollapsed: false,
   theme: 'system',

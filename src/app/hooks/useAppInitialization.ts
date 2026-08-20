@@ -13,7 +13,7 @@ export function useAppInitialization() {
     if (didInitializeRef.current) return
     didInitializeRef.current = true
 
-    void newDoc()
+    void newDoc({ persist: false })
     void loadSettings()
       .then(() => {
         const defaultViewMode = useSettingsStore.getState().settings.defaultViewMode

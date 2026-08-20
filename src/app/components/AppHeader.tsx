@@ -6,6 +6,7 @@ import {
   Presentation,
   Redo2,
   Save,
+  SaveAll,
   Search,
   Sparkles,
   Undo2,
@@ -34,6 +35,7 @@ interface AppHeaderProps {
   onOpenExport: () => void
   onOpenPresentation: () => void
   onSave: () => Promise<boolean>
+  onSaveAs: () => Promise<boolean>
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -52,6 +54,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenExport,
   onOpenPresentation,
   onSave,
+  onSaveAs,
 }) => {
   const keybindingOverrides = useSettingsStore((state) => state.settings.keybindings.overrides)
   const shortcutTitle = (label: string, commandId: KeybindingCommandId) => {
@@ -102,6 +105,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
 
         <div className="mx-1 h-4 w-[1px] bg-zinc-200" />
+
+        <button
+          type="button"
+          onClick={() => void onSaveAs().then((success) => {
+            if (success) toast.success('已另存为新位置')
+          })}
+          className="btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none"
+          title="另存为"
+          aria-label="另存为"
+        >
+          <SaveAll size={14} />
+        </button>
 
         <button
           type="button"

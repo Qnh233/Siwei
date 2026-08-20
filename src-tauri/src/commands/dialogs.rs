@@ -21,3 +21,11 @@ pub fn save_file_dialog(app: tauri::AppHandle, default_name: String) -> Option<S
         .blocking_save_file()
         .and_then(|path| path.as_path().map(|path| path.display().to_string()))
 }
+
+#[tauri::command]
+pub fn open_directory_dialog(app: tauri::AppHandle) -> Option<String> {
+    app.dialog()
+        .file()
+        .blocking_pick_folder()
+        .and_then(|path| path.as_path().map(|path| path.display().to_string()))
+}

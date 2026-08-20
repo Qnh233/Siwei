@@ -14,6 +14,7 @@ import { toast } from '../../components/common/Toast'
 import { openFileDialog } from '../../services/siweiApi'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { useLibraryStore, type LibraryView } from './libraryStore'
+import { useDocumentStore } from '../document/documentStore'
 import { LibraryDocumentsView } from './views/LibraryDocumentsView'
 import { LibrarySearchView } from './views/LibrarySearchView'
 import { LibraryTagsView } from './views/LibraryTagsView'
@@ -41,6 +42,7 @@ export const LibraryWorkspace: React.FC = () => {
   const isLoading = useLibraryStore((s) => s.isLoading)
   const error = useLibraryStore((s) => s.error)
   const refreshStatus = useLibraryStore((s) => s.refreshStatus)
+  const saveStatus = useDocumentStore((s) => s.saveStatus)
   const runAddDoc = useAsyncOperation({ errorPrefix: '加入失败' })
   const runRefresh = useAsyncOperation({ errorPrefix: '刷新失败' })
   const runCancelRefresh = useAsyncOperation({ errorPrefix: '取消失败' })
@@ -78,6 +80,11 @@ export const LibraryWorkspace: React.FC = () => {
     if (!activeView) return
     void loadDocs()
   }, [activeView, loadDocs])
+
+  React.useEffect(() => {
+    if (!activeView || saveStatus !== 'saved') return
+    void loadDocs()
+  }, [activeView, loadDocs, saveStatus])
 
   React.useEffect(() => {
     if (activeView === 'tags') void loadTags()

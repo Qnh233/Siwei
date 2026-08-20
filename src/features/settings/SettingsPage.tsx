@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Bot,
   Database,
+  FolderOpen,
   FlaskConical,
   KeyRound,
   List,
@@ -23,7 +24,7 @@ import { useRecentStore } from '../document/recentStore'
 import { useLibraryStore } from '../library/libraryStore'
 import { useSettingsStore } from './settingsStore'
 import type { DefaultViewMode, ThemeMode } from '../../types/settings'
-import { agentDeleteApiKey, agentSaveApiKey } from '../../services/siweiApi'
+import { agentDeleteApiKey, agentSaveApiKey, openDirectoryDialog } from '../../services/siweiApi'
 import { ShortcutSettingsSection } from './ShortcutSettingsSection'
 
 export const SettingsPage: React.FC = () => {
@@ -38,6 +39,11 @@ export const SettingsPage: React.FC = () => {
   const rebuildIndex = useLibraryStore((s) => s.rebuildIndex)
   const setActiveView = useWorkspaceStore((s) => s.setActiveView)
   const [apiKey, setApiKey] = React.useState('')
+  const [libraryPathDraft, setLibraryPathDraft] = React.useState(settings.documentLibraryPath)
+
+  React.useEffect(() => {
+    setLibraryPathDraft(settings.documentLibraryPath)
+  }, [settings.documentLibraryPath])
 
   const saveSetting = async (patch: Parameters<typeof updateSettings>[0]) => {
     try {
@@ -88,6 +94,22 @@ export const SettingsPage: React.FC = () => {
     }
   }
 
+  const saveLibraryPath = async (path = libraryPathDraft) => {
+    const normalized = path.trim()
+    if (!normalized) {
+      toast.error('文档库目录不能为空')
+      return
+    }
+    await saveSetting({ documentLibraryPath: normalized })
+  }
+
+  const chooseLibraryPath = async () => {
+    const path = await openDirectoryDialog()
+    if (!path) return
+    setLibraryPathDraft(path)
+    await saveLibraryPath(path)
+  }
+
   return (
     <section className="flex h-full flex-col bg-[#FCFCFB] text-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200/70 bg-white/70 px-5 dark:border-zinc-800/70 dark:bg-zinc-900/70">
@@ -109,6 +131,42 @@ export const SettingsPage: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto flex max-w-3xl flex-col gap-5">
+          <SettingsSection title="文档库">
+            <SettingRow
+              title="默认文档库目录"
+              description="新建文档会自动保存到这里并立即进入文档库。普通保存不会再询问位置。"
+            >
+              <div className="flex max-w-[460px] items-center gap-2">
+                <input
+                  aria-label="默认文档库目录"
+                  value={libraryPathDraft}
+                  onChange={(event) => setLibraryPathDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void saveLibraryPath()
+                  }}
+                  className="h-8 min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2.5 text-xs text-zinc-700 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveLibraryPath()}
+                  disabled={!libraryPathDraft.trim() || libraryPathDraft.trim() === settings.documentLibraryPath}
+                  className="h-8 shrink-0 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  保存路径
+                </button>
+                <button
+                  type="button"
+                  aria-label="选择文档库目录"
+                  onClick={() => void chooseLibraryPath()}
+                  className="flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-zinc-900 px-3 text-xs font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                >
+                  <FolderOpen size={13} />
+                  选择
+                </button>
+              </div>
+            </SettingRow>
+          </SettingsSection>
+
           <SettingsSection title="编辑">
             <SettingRow title="自动保存" description="关闭后只保留手动保存。">
               <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-600">
