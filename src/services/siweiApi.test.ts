@@ -200,6 +200,16 @@ describe('siweiApi', () => {
     expect(invokeMock).toHaveBeenNthCalledWith(2, 'prepare_new_document_path', { title: '未命名文档' })
   })
 
+  it('wraps open-file-location with the indexed document path', async () => {
+    invokeMock.mockResolvedValue(undefined)
+
+    await api.openFileLocation('D:/Notes/demo.siwei.json')
+
+    expect(invokeMock).toHaveBeenCalledWith('open_file_location', {
+      path: 'D:/Notes/demo.siwei.json',
+    })
+  })
+
   it('wraps agent commands with stable camelCase payload fields', async () => {
     const context: AgentDocumentContext = {
       schemaVersion: 1,

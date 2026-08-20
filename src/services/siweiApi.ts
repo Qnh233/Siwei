@@ -127,6 +127,10 @@ export function openDirectoryDialog(): Promise<string | null> {
   return callCommand('open_directory_dialog')
 }
 
+export function openFileLocation(path: string): Promise<void> {
+  return callCommand('open_file_location', { path })
+}
+
 export function prepareNewDocumentPath(title: string): Promise<string> {
   return callCommand('prepare_new_document_path', { title })
 }

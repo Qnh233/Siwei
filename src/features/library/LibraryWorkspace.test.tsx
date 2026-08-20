@@ -9,6 +9,7 @@ import { LibraryWorkspace } from './LibraryWorkspace'
 
 vi.mock('../../services/siweiApi', () => ({
   openFileDialog: vi.fn(),
+  openFileLocation: vi.fn(),
   queryLibraryDocs: vi.fn(),
   addLibraryDoc: vi.fn(),
   removeLibraryDoc: vi.fn(),
@@ -79,6 +80,7 @@ describe('LibraryWorkspace', () => {
   })
 
   it('shows a degraded open-location action for failed documents', async () => {
+    apiMock.openFileLocation.mockResolvedValueOnce(undefined)
     render(<LibraryWorkspace />)
 
     await waitFor(() => {
@@ -87,9 +89,8 @@ describe('LibraryWorkspace', () => {
 
     fireEvent.click(screen.getByTitle('打开文件位置'))
 
-    expect(useToastStore.getState().toasts[0]).toMatchObject({
-      type: 'info',
-      message: '当前版本暂不支持打开文件位置，可先打开文档或复制路径定位。',
+    await waitFor(() => {
+      expect(apiMock.openFileLocation).toHaveBeenCalledWith('broken.siwei.json')
     })
   })
 

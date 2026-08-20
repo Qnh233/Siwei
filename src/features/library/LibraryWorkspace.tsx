@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 import { toast } from '../../components/common/Toast'
-import { openFileDialog } from '../../services/siweiApi'
+import { openFileDialog, openFileLocation } from '../../services/siweiApi'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { useLibraryStore, type LibraryView } from './libraryStore'
 import { useDocumentStore } from '../document/documentStore'
@@ -47,6 +47,7 @@ export const LibraryWorkspace: React.FC = () => {
   const runRefresh = useAsyncOperation({ errorPrefix: '刷新失败' })
   const runCancelRefresh = useAsyncOperation({ errorPrefix: '取消失败' })
   const runRebuild = useAsyncOperation({ errorPrefix: '重建失败' })
+  const runOpenLocation = useAsyncOperation({ errorPrefix: '打开文件位置失败' })
 
   const setActiveView = useLibraryStore((s) => s.setActiveView)
   const loadDocs = useLibraryStore((s) => s.loadDocs)
@@ -150,6 +151,12 @@ export const LibraryWorkspace: React.FC = () => {
     })
   }
 
+  const handleOpenLocation = async (path: string) => {
+    await runOpenLocation(async () => {
+      await openFileLocation(path)
+    })
+  }
+
   return (
     <section className="flex h-full flex-col bg-[#FCFCFB] text-zinc-800">
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-zinc-200/70 bg-white/70 px-5">
@@ -223,9 +230,7 @@ export const LibraryWorkspace: React.FC = () => {
             onLoadMore={() => void loadMoreDocs()}
             onOpen={(doc) => void openIndexedNode(doc.path)}
             onRefresh={(doc) => void refreshDoc(doc.path)}
-            onOpenLocation={() => {
-              toast.info('当前版本暂不支持打开文件位置，可先打开文档或复制路径定位。')
-            }}
+            onOpenLocation={(doc) => void handleOpenLocation(doc.path)}
             onRemove={(doc) => {
               void removeDoc(doc.path).then(() => toast.info('已移出文档库'))
             }}

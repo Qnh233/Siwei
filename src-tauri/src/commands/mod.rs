@@ -45,6 +45,7 @@ pub fn handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
         library::toggle_library_task,
         dialogs::open_file_dialog,
         dialogs::open_directory_dialog,
+        dialogs::open_file_location,
         dialogs::save_file_dialog,
         search::search_document,
         settings::get_settings,

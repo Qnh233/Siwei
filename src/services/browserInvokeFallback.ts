@@ -81,6 +81,8 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
       return null as T
     case 'open_directory_dialog':
       return settings.documentLibraryPath as T
+    case 'open_file_location':
+      return undefined as T
     case 'prepare_new_document_path': {
       const title = sanitizeFileStem(String(args?.title ?? '未命名文档'))
       const directory = settings.documentLibraryPath.replace(/[\\/]+$/, '')
