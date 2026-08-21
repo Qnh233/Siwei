@@ -136,7 +136,7 @@ vi.mock('reactflow', async () => {
                   event.stopPropagation()
                   const isReorganizeMode = document
                     .querySelector('[aria-label="重组"]')
-                    ?.className.includes('bg-emerald-100') ?? false
+                    ?.getAttribute('aria-pressed') === 'true'
                   const targetNode = nodes.find((currentNode) => currentNode.id === 'node-1')
                   const draggedPosition = isReorganizeMode && targetNode
                     ? targetNode.position ?? { x: 0, y: 0 }
@@ -222,6 +222,7 @@ vi.mock('reactflow', async () => {
     Position: { Top: 'top', Left: 'left', Right: 'right', Bottom: 'bottom' },
     MarkerType: { ArrowClosed: 'arrowclosed' },
     ConnectionMode: { Loose: 'loose' },
+    BackgroundVariant: { Dots: 'dots', Lines: 'lines' },
     MiniMap: () => <div data-testid="flow-minimap" />,
     Controls: () => <div data-testid="flow-controls" />,
     Background: () => <div data-testid="flow-background" />,
@@ -604,7 +605,7 @@ describe('MindMapView', () => {
     render(<MindMapView />)
 
     fireEvent.click(screen.getByRole('button', { name: '重组' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: '重组' })).toHaveClass('bg-emerald-100'))
+    await waitFor(() => expect(screen.getByRole('button', { name: '重组' })).toHaveAttribute('aria-pressed', 'true'))
     const draggedNode = screen.getByTestId('flow-node-node-2')
     expect(draggedNode).toHaveAttribute('data-position-x', '900')
 
@@ -636,7 +637,7 @@ describe('MindMapView', () => {
     render(<MindMapView />)
 
     fireEvent.click(screen.getByRole('button', { name: '重组' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: '重组' })).toHaveClass('bg-emerald-100'))
+    await waitFor(() => expect(screen.getByRole('button', { name: '重组' })).toHaveAttribute('aria-pressed', 'true'))
     fireEvent.drag(screen.getByTestId('flow-node-node-2'))
 
     await waitFor(() => expect(screen.getByTestId('mindmap-node-node-1')).toHaveClass('ring-4'))
@@ -784,7 +785,7 @@ describe('MindMapView', () => {
     })
 
     render(<MindMapView />)
-    fireEvent.change(screen.getByLabelText('导图布局策略'), { target: { value: 'balanced-mindmap' } })
+    selectStructure('导图')
 
     const previewRootX = Number(screen.getByTestId('flow-node-agent-insertion-preview:agent-root').dataset.positionX)
     const previewChildX = Number(screen.getByTestId('flow-node-agent-insertion-preview:agent-child').dataset.positionX)
@@ -793,10 +794,11 @@ describe('MindMapView', () => {
     expect(previewChildX).toBeLessThan(previewRootX)
   })
 
-  it('shows radial strategy only when the experimental layout engine is enabled', () => {
+  it('shows advanced radial strategy only when the experimental layout engine is enabled', () => {
     render(<MindMapView />)
 
-    expect(screen.queryByLabelText('导图布局策略')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '结构类型' }))
+    expect(screen.queryByRole('button', { name: '径向' })).not.toBeInTheDocument()
     cleanup()
 
     useSettingsStore.setState((state) => ({
@@ -808,7 +810,8 @@ describe('MindMapView', () => {
 
     render(<MindMapView />)
 
-    expect(screen.getByRole('option', { name: '径向' })).toHaveValue('radial-mindmap')
+    fireEvent.click(screen.getByRole('button', { name: '结构类型' }))
+    expect(screen.getByRole('button', { name: '径向' })).toBeInTheDocument()
   })
 
   it('saves radial layout state with engine version 3 from auto layout', () => {
@@ -821,7 +824,7 @@ describe('MindMapView', () => {
     }))
     render(<MindMapView />)
 
-    fireEvent.change(screen.getByLabelText('导图布局策略'), { target: { value: 'radial-mindmap' } })
+    selectStructure('径向')
     fireEvent.click(screen.getByRole('button', { name: '自动整理' }))
 
     expect(useDocumentStore.getState().currentDoc?.mindMapLayout).toMatchObject({
@@ -854,7 +857,7 @@ describe('MindMapView', () => {
 
     render(<MindMapView />)
 
-    expect(screen.getByLabelText('导图布局策略')).toHaveValue('radial-mindmap')
+    expect(screen.getByRole('button', { name: '结构类型' })).toHaveTextContent('径向')
 
     fireEvent.click(screen.getByRole('button', { name: '自动整理' }))
 
@@ -887,12 +890,12 @@ describe('MindMapView', () => {
 
     render(<MindMapView />)
 
-    const strategySelect = screen.getByLabelText('导图布局策略')
-    expect(strategySelect).toHaveValue('radial-mindmap')
+    const structureButton = screen.getByRole('button', { name: '结构类型' })
+    expect(structureButton).toHaveTextContent('径向')
 
-    fireEvent.change(strategySelect, { target: { value: 'balanced-mindmap' } })
+    selectStructure('导图')
 
-    expect(strategySelect).toHaveValue('balanced-mindmap')
+    expect(structureButton).toHaveTextContent('导图')
   })
 
   it('collapses and restores one branch side from the side handle in balanced layout', async () => {
@@ -926,7 +929,7 @@ describe('MindMapView', () => {
     }))
 
     render(<MindMapView />)
-    fireEvent.change(screen.getByLabelText('导图布局策略'), { target: { value: 'balanced-mindmap' } })
+    selectStructure('导图')
 
     expect(screen.getByTestId('flow-node-left-child')).toBeInTheDocument()
     expect(screen.getByTestId('flow-node-right-child')).toBeInTheDocument()
@@ -1056,10 +1059,81 @@ describe('MindMapView', () => {
     expect(screen.queryByRole('button', { name: '导出导图' })).not.toBeInTheDocument()
   })
 
+  it('offers five product structure types without requiring experimental layouts', async () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByRole('button', { name: '结构类型' }))
+
+    for (const label of ['导图', '逻辑图', '树状图', '组织结构图', '时间轴']) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${label}(?:\\s|$)`) })).toBeInTheDocument()
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: /^树状图(?:\s|$)/ }))
+
+    await waitFor(() => {
+      expect(useDocumentStore.getState().currentDoc?.mindMapLayout?.strategy).toBe('tree-down')
+    })
+    expect(screen.getByRole('button', { name: '结构类型' })).toHaveTextContent('树状图')
+  })
+
+  it('updates canvas background and hierarchy line preferences from the style panel', async () => {
+    render(<MindMapView />)
+
+    expect(screen.queryByTestId('flow-background')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '画布样式' }))
+    fireEvent.click(screen.getByRole('button', { name: '网格' }))
+    fireEvent.click(screen.getByRole('button', { name: '直线' }))
+
+    await waitFor(() => {
+      expect(useSettingsStore.getState().settings.mindMapAppearance).toMatchObject({
+        canvasBackground: 'grid',
+        hierarchyLineStyle: 'straight',
+      })
+    })
+    expect(screen.getByTestId('flow-background')).toBeInTheDocument()
+  })
+
+  it('changes hierarchy line pattern, color, and node shape without affecting relation styling', async () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByRole('button', { name: '画布样式' }))
+    fireEvent.click(screen.getByRole('button', { name: '虚线' }))
+    fireEvent.click(screen.getByRole('button', { name: '胶囊' }))
+    fireEvent.click(screen.getByRole('button', { name: '层级线颜色 #53728B' }))
+
+    await waitFor(() => {
+      expect(useSettingsStore.getState().settings.mindMapAppearance).toMatchObject({
+        hierarchyLinePattern: 'dashed',
+        hierarchyLineColor: '#53728B',
+        nodeShape: 'pill',
+      })
+    })
+    expect(screen.getByTestId('mindmap-node-node-1')).toHaveClass('rounded-[28px]')
+  })
+
+  it('applies a theme preset as a complete editable appearance bundle', async () => {
+    render(<MindMapView />)
+
+    fireEvent.click(screen.getByRole('button', { name: '画布样式' }))
+    fireEvent.click(screen.getByRole('button', { name: '主题：工程网格' }))
+
+    await waitFor(() => {
+      expect(useSettingsStore.getState().settings.mindMapAppearance).toMatchObject({
+        canvasBackground: 'grid',
+        hierarchyLineStyle: 'orthogonal',
+        hierarchyLinePattern: 'solid',
+        hierarchyLineColor: '#53728B',
+        nodeShape: 'square',
+      })
+    })
+    expect(screen.getByTestId('mindmap-node-node-1')).toHaveClass('rounded-md')
+  })
+
   it('shows free-canvas, force preview, and diagnostics only when experiments are enabled', () => {
     render(<MindMapView />)
 
-    expect(screen.queryByRole('option', { name: '自由画布' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '结构类型' }))
+    expect(screen.queryByRole('button', { name: '自由画布' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '力导向预览' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '布局诊断' })).not.toBeInTheDocument()
     cleanup()
@@ -1073,7 +1147,8 @@ describe('MindMapView', () => {
 
     render(<MindMapView />)
 
-    expect(screen.getByRole('option', { name: '自由画布' })).toHaveValue('free-canvas')
+    fireEvent.click(screen.getByRole('button', { name: '结构类型' }))
+    expect(screen.getByRole('button', { name: '自由画布' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '力导向预览' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '布局诊断' })).toBeInTheDocument()
   })
@@ -1086,7 +1161,7 @@ describe('MindMapView', () => {
       },
     }))
     render(<MindMapView />)
-    fireEvent.change(screen.getByLabelText('导图布局策略'), { target: { value: 'free-canvas' } })
+    selectStructure('自由画布')
 
     const beforeLayout = useDocumentStore.getState().currentDoc?.mindMapLayout
     fireEvent.click(screen.getByRole('button', { name: '力导向预览' }))
@@ -1177,4 +1252,9 @@ function createStrictPlan(
     references: [],
     operations,
   }
+}
+
+function selectStructure(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: '结构类型' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${label}(?:\\s|$)`) }))
 }

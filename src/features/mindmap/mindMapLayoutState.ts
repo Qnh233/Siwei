@@ -15,6 +15,9 @@ export const DEFAULT_MIND_MAP_LAYOUT_STRATEGY: MindMapLayoutStrategy = 'classic-
 export const SUPPORTED_MIND_MAP_LAYOUT_STRATEGIES = [
   'classic-dagre',
   'balanced-mindmap',
+  'tree-down',
+  'org-chart',
+  'timeline',
   'radial-mindmap',
   'free-canvas',
 ] as const

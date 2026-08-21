@@ -18,6 +18,8 @@ pub struct AppSettings {
     #[serde(default)]
     pub experimental_mind_map_layout_engine: bool,
     #[serde(default)]
+    pub mind_map_appearance: MindMapAppearanceSettings,
+    #[serde(default)]
     pub keybindings: KeybindingSettings,
     pub agent: AgentSettings,
 }
@@ -27,6 +29,81 @@ pub struct AppSettings {
 pub struct KeybindingSettings {
     #[serde(default)]
     pub overrides: HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MindMapAppearanceSettings {
+    #[serde(default)]
+    pub canvas_background: MindMapCanvasBackground,
+    #[serde(default)]
+    pub hierarchy_line_style: MindMapHierarchyLineStyle,
+    #[serde(default)]
+    pub hierarchy_line_pattern: MindMapHierarchyLinePattern,
+    #[serde(default = "default_hierarchy_line_color")]
+    pub hierarchy_line_color: String,
+    #[serde(default)]
+    pub node_shape: MindMapNodeShape,
+    #[serde(default = "default_node_border_color")]
+    pub node_border_color: String,
+    #[serde(default = "default_node_fill_color")]
+    pub node_fill_color: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MindMapCanvasBackground {
+    Paper,
+    Dots,
+    Grid,
+    Plain,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MindMapHierarchyLineStyle {
+    Curve,
+    Orthogonal,
+    Straight,
+}
+
+impl Default for MindMapHierarchyLineStyle {
+    fn default() -> Self {
+        Self::Curve
+    }
+}
+
+impl Default for MindMapCanvasBackground {
+    fn default() -> Self {
+        Self::Paper
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MindMapHierarchyLinePattern {
+    Solid,
+    Dashed,
+}
+
+impl Default for MindMapHierarchyLinePattern {
+    fn default() -> Self {
+        Self::Solid
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MindMapNodeShape {
+    Rounded,
+    Pill,
+    Square,
+}
+
+impl Default for MindMapNodeShape {
+    fn default() -> Self {
+        Self::Rounded
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -92,10 +169,37 @@ impl Default for AppSettings {
             theme: ThemeMode::System,
             focus_mode: false,
             experimental_mind_map_layout_engine: false,
+            mind_map_appearance: MindMapAppearanceSettings::default(),
             keybindings: KeybindingSettings::default(),
             agent: AgentSettings::default(),
         }
     }
+}
+
+impl Default for MindMapAppearanceSettings {
+    fn default() -> Self {
+        Self {
+            canvas_background: MindMapCanvasBackground::Paper,
+            hierarchy_line_style: MindMapHierarchyLineStyle::Curve,
+            hierarchy_line_pattern: MindMapHierarchyLinePattern::Solid,
+            hierarchy_line_color: default_hierarchy_line_color(),
+            node_shape: MindMapNodeShape::Rounded,
+            node_border_color: default_node_border_color(),
+            node_fill_color: default_node_fill_color(),
+        }
+    }
+}
+
+fn default_hierarchy_line_color() -> String {
+    "#AA8C72".to_string()
+}
+
+fn default_node_border_color() -> String {
+    "#B79272".to_string()
+}
+
+fn default_node_fill_color() -> String {
+    "#FAF6EC".to_string()
 }
 
 impl AppSettings {
@@ -108,10 +212,28 @@ impl AppSettings {
             ));
         }
 
+        for (label, color) in [
+            ("层级线颜色", &self.mind_map_appearance.hierarchy_line_color),
+            ("节点边框颜色", &self.mind_map_appearance.node_border_color),
+            ("节点填充颜色", &self.mind_map_appearance.node_fill_color),
+        ] {
+            if !is_hex_color(color) {
+                return Err(format!("{label}必须是 #RRGGBB 格式"));
+            }
+        }
+
         self.agent.validate()?;
 
         Ok(())
     }
+}
+
+fn is_hex_color(value: &str) -> bool {
+    value.len() == 7
+        && value.starts_with('#')
+        && value[1..]
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
 }
 
 impl Default for AgentSettings {

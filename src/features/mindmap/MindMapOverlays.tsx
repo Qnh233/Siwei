@@ -2,10 +2,10 @@ import React from 'react'
 
 import type { NodeOperationState } from '../document/documentStore'
 import type { MindMapLayoutStrategy } from '../../types/document'
+import type { MindMapAppearanceSettings } from '../../types/settings'
 import type { MindMapLayoutDiagnostics } from './layoutEngine'
 import { MindMapContextMenu, MindMapMenuAction } from './MindMapContextMenu'
 import { MindMapDeleteDialog } from './MindMapDeleteDialog'
-import { DEFAULT_MIND_MAP_LAYOUT_STRATEGY } from './mindMapLayoutState'
 import { MindMapSearchBar } from './MindMapSearchBar'
 import { MindMapMode, MindMapToolbar } from './MindMapToolbar'
 
@@ -22,6 +22,7 @@ interface MindMapOverlaysProps {
   searchOpen: boolean
   experimentalLayoutEnabled: boolean
   layoutStrategy: MindMapLayoutStrategy
+  mindMapAppearance: MindMapAppearanceSettings
   forcePreviewActive: boolean
   feedback: string | null
   diagnosticsOpen: boolean
@@ -36,6 +37,7 @@ interface MindMapOverlaysProps {
   deleteMessage: string | null
   onModeChange: (mode: MindMapMode) => void
   onStrategyChange: (strategy: MindMapLayoutStrategy) => void
+  onAppearanceChange: (changes: Partial<MindMapAppearanceSettings>) => void
   onAutoLayout: () => void
   onForceDirectedPreview: () => void
   onToggleDiagnostics: () => void
@@ -62,6 +64,7 @@ export const MindMapOverlays: React.FC<MindMapOverlaysProps> = ({
   searchOpen,
   experimentalLayoutEnabled,
   layoutStrategy,
+  mindMapAppearance,
   forcePreviewActive,
   feedback,
   diagnosticsOpen,
@@ -76,6 +79,7 @@ export const MindMapOverlays: React.FC<MindMapOverlaysProps> = ({
   deleteMessage,
   onModeChange,
   onStrategyChange,
+  onAppearanceChange,
   onAutoLayout,
   onForceDirectedPreview,
   onToggleDiagnostics,
@@ -102,9 +106,11 @@ export const MindMapOverlays: React.FC<MindMapOverlaysProps> = ({
           focused={focused}
           searchOpen={searchOpen}
           experimentalLayoutEnabled={experimentalLayoutEnabled}
-          strategy={experimentalLayoutEnabled ? layoutStrategy : DEFAULT_MIND_MAP_LAYOUT_STRATEGY}
+          strategy={layoutStrategy}
+          appearance={mindMapAppearance}
           onModeChange={onModeChange}
           onStrategyChange={onStrategyChange}
+          onAppearanceChange={onAppearanceChange}
           onAutoLayout={onAutoLayout}
           onForceDirectedPreview={onForceDirectedPreview}
           onToggleDiagnostics={onToggleDiagnostics}

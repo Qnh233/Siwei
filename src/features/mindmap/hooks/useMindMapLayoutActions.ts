@@ -11,7 +11,6 @@ import {
 } from '../layoutEngine'
 import {
   createMindMapLayoutState,
-  DEFAULT_MIND_MAP_LAYOUT_STRATEGY,
 } from '../mindMapLayoutState'
 import { buildMindMapNodeSizes } from '../nodeDataAssembler'
 import type { MindMapNodeData } from '../MindMapNode'
@@ -23,7 +22,6 @@ interface UseMindMapLayoutActionsParams {
   visibleNodeIds: Set<string>
   nodes: Node<MindMapNodeData>[]
   measuredNodeSizes: Record<string, MindMapNodeSize>
-  experimentalLayoutEnabled: boolean
   layoutStrategy: MindMapLayoutStrategy
   commitMindMapLayout: (layout: MindMapLayoutState) => void
   setFeedback: (message: string) => void
@@ -36,14 +34,13 @@ export function useMindMapLayoutActions({
   visibleNodeIds,
   nodes,
   measuredNodeSizes,
-  experimentalLayoutEnabled,
   layoutStrategy,
   commitMindMapLayout,
   setFeedback,
 }: UseMindMapLayoutActionsParams) {
   const [forcePreview, setForcePreview] = React.useState<MindMapLayoutResult | null>(null)
 
-  const activeStrategy = experimentalLayoutEnabled ? layoutStrategy : DEFAULT_MIND_MAP_LAYOUT_STRATEGY
+  const activeStrategy = layoutStrategy
 
   const createCurrentNodePositions = React.useCallback(() => {
     return nodes.reduce<Record<string, { x: number; y: number }>>((positions, node) => {
@@ -86,6 +83,26 @@ export function useMindMapLayoutActions({
     setFeedback,
     visibleNodeIds,
   ])
+
+  const handleApplyStrategy = React.useCallback((strategy: MindMapLayoutStrategy) => {
+    if (!currentDoc) return
+    const layoutRoot = graphRootNode ?? currentDoc.root
+    const rawGraph = outlineToGraph(layoutRoot, collapsedNodeIds, visibleNodeIds)
+    const nodeSizes = buildMindMapNodeSizes(layoutRoot, measuredNodeSizes)
+    const layouted = layoutMindMap({
+      root: layoutRoot,
+      graphData: rawGraph,
+      collapsedNodeIds,
+      visibleNodeIds,
+      strategy,
+      nodeSizes,
+      mode: 'persistent',
+    })
+    if (layouted.layoutState) {
+      commitMindMapLayout(layouted.layoutState)
+      setFeedback('结构布局已更新')
+    }
+  }, [collapsedNodeIds, commitMindMapLayout, currentDoc, graphRootNode, measuredNodeSizes, setFeedback, visibleNodeIds])
 
   const handleRelayoutBranch = React.useCallback((nodeId: string) => {
     if (!currentDoc?.mindMapLayout) return
@@ -169,6 +186,7 @@ export function useMindMapLayoutActions({
   return {
     forcePreview,
     handleAutoLayout,
+    handleApplyStrategy,
     handleRelayoutBranch,
     handleUnlockNode,
     handleForceDirectedPreview,

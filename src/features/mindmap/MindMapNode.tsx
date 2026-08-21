@@ -4,6 +4,7 @@ import { Handle, NodeProps, Position } from 'reactflow'
 import { MindMapInlineEditor } from './MindMapInlineEditor'
 import type { AgentNodePreview } from '../agent/agentTypes'
 import { OutlineInlineContent } from '../outline/OutlineInlineContent'
+import type { MindMapAppearanceSettings } from '../../types/settings'
 
 export interface MindMapNodeData {
   label: string
@@ -15,6 +16,7 @@ export interface MindMapNodeData {
   matched: boolean
   activeMatch: boolean
   hasTags: boolean
+  appearance: MindMapAppearanceSettings
   exportClean?: boolean
   dropState?: 'before' | 'child' | 'after' | null
   invalidDrop?: boolean
@@ -39,8 +41,6 @@ export interface MindMapNodeData {
   onToggleChecked: (nodeId: string) => void
 }
 
-const handleStyle = { background: '#A27B5C', border: 'none', width: 6, height: 6 }
-
 export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, selected, type }) => {
   const isRoot = type === 'root'
   const hasChildren = data.childCount > 0
@@ -48,6 +48,22 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
   const isAgentDeleting = data.agentPreview?.kind === 'delete'
   const isAgentMoving = data.agentPreview?.kind === 'move'
   const agentTextPreview = data.agentPreview?.kind === 'update' ? data.agentPreview.text : undefined
+  const handleStyle = { background: data.appearance.hierarchyLineColor, border: 'none', width: 6, height: 6 }
+  const nodeShapeClass = data.appearance.nodeShape === 'pill'
+    ? 'rounded-[28px]'
+    : data.appearance.nodeShape === 'square'
+      ? 'rounded-md'
+      : 'rounded-xl'
+  const useThemeSurface = !isAgentDeleting
+    && !data.agentInsertion
+    && !agentTextPreview
+    && !isAgentMoving
+    && !(data.activeMatch && !data.exportClean)
+    && !(selected && !data.exportClean)
+    && !(data.matched && !data.exportClean)
+    && !data.focused
+    && !data.invalidDrop
+    && data.dropState !== 'child'
 
   const handleBranchSideClick = (event: React.MouseEvent, side: 'left' | 'right') => {
     event.stopPropagation()
@@ -58,7 +74,11 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
   return (
     <div
       data-testid={`mindmap-node-${id}`}
-      className={`group relative min-w-[170px] max-w-[240px] rounded-xl border-2 px-3 py-2 text-center shadow-fabric transition-all duration-200 ${
+      style={useThemeSurface ? {
+        borderColor: data.appearance.nodeBorderColor,
+        backgroundColor: data.appearance.nodeFillColor,
+      } : undefined}
+      className={`group relative min-w-[170px] max-w-[240px] ${nodeShapeClass} border-2 px-3 py-2 text-center shadow-fabric transition-all duration-200 ${
         isAgentDeleting
           ? 'border-rose-300 bg-rose-50 ring-4 ring-rose-500/10'
         : data.agentInsertion
@@ -79,7 +99,7 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
           ? 'border-rose-300 bg-rose-50 ring-4 ring-rose-500/10'
         : data.dropState === 'child'
           ? 'scale-[1.02] border-emerald-500 bg-emerald-50 ring-4 ring-emerald-500/10'
-          : 'border-dashed border-amber-900/20 bg-[#FAF6EC] hover:border-amber-900/40 hover:bg-[#FAF5E6]'
+          : 'border-solid border-amber-900/20 bg-[#FAF6EC] hover:brightness-[0.985]'
       }`}
     >
       {data.dropState === 'before' && <div className="absolute -top-2 left-2 right-2 h-0.5 rounded bg-emerald-600" />}
@@ -103,6 +123,10 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
         isConnectable={false}
         onClick={(event) => handleBranchSideClick(event, 'right')}
       />
+      <Handle id="top-target" type="target" position={Position.Top} style={handleStyle} isConnectable={false} />
+      <Handle id="top-source" type="source" position={Position.Top} style={handleStyle} isConnectable={false} />
+      <Handle id="bottom-target" type="target" position={Position.Bottom} style={handleStyle} isConnectable={false} />
+      <Handle id="bottom-source" type="source" position={Position.Bottom} style={handleStyle} isConnectable={false} />
       <Handle id="relation-top" type="source" position={Position.Top} style={relationHandleStyle} />
       <Handle id="relation-right" type="source" position={Position.Right} style={relationHandleStyle} />
       <Handle id="relation-bottom" type="source" position={Position.Bottom} style={relationHandleStyle} />

@@ -118,6 +118,69 @@ describe('layoutMindMap', () => {
     })
   })
 
+  it('lays out tree diagrams from top to bottom with vertical handles', () => {
+    const result = layoutMindMap({
+      root,
+      graphData: outlineToGraph(root, new Set()),
+      collapsedNodeIds: new Set(),
+      strategy: 'tree-down',
+      nodeSizes: {},
+      mode: 'persistent',
+    })
+    const positionById = Object.fromEntries(result.nodes.map((node) => [node.id, node.position]))
+
+    expect(positionById.a.y).toBeGreaterThan(positionById.root.y)
+    expect(positionById['a-1'].y).toBeGreaterThan(positionById.a.y)
+    expect(result.edges.find((edge) => edge.id === 'root-a')).toMatchObject({
+      sourceHandle: 'bottom-source',
+      targetHandle: 'top-target',
+    })
+    expect(result.layoutState?.strategy).toBe('tree-down')
+  })
+
+  it('uses a tighter vertical hierarchy for organization charts', () => {
+    const tree = layoutMindMap({
+      root,
+      graphData: outlineToGraph(root, new Set()),
+      collapsedNodeIds: new Set(),
+      strategy: 'tree-down',
+      nodeSizes: {},
+      mode: 'persistent',
+    })
+    const org = layoutMindMap({
+      root,
+      graphData: outlineToGraph(root, new Set()),
+      collapsedNodeIds: new Set(),
+      strategy: 'org-chart',
+      nodeSizes: {},
+      mode: 'persistent',
+    })
+    const treePositions = Object.fromEntries(tree.nodes.map((node) => [node.id, node.position]))
+    const orgPositions = Object.fromEntries(org.nodes.map((node) => [node.id, node.position]))
+
+    expect(orgPositions.a.y).toBeGreaterThan(orgPositions.root.y)
+    expect(org.layoutState?.strategy).toBe('org-chart')
+    expect(orgPositions.a.x).not.toBe(treePositions.a.x)
+  })
+
+  it('lays first-level topics along a timeline and stacks their details below', () => {
+    const result = layoutMindMap({
+      root,
+      graphData: outlineToGraph(root, new Set()),
+      collapsedNodeIds: new Set(),
+      strategy: 'timeline',
+      nodeSizes: {},
+      mode: 'persistent',
+    })
+    const positionById = Object.fromEntries(result.nodes.map((node) => [node.id, node.position]))
+
+    expect(positionById.a.x).toBeLessThan(positionById.b.x)
+    expect(positionById.b.x).toBeLessThan(positionById.c.x)
+    expect(positionById['a-1'].y).toBeGreaterThan(positionById.a.y)
+    expect(positionById['c-1'].y).toBeGreaterThan(positionById.c.y)
+    expect(result.layoutState?.strategy).toBe('timeline')
+  })
+
   it('preserves locked node positions from persisted layout', () => {
     const graphData = outlineToGraph(root, new Set())
     const persistedLayout: MindMapLayoutState = {

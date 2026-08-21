@@ -70,6 +70,8 @@ export const MindMapView: React.FC = () => {
   const reverseRelation = useDocumentStore((s) => s.reverseRelation)
   const deleteRelation = useDocumentStore((s) => s.deleteRelation)
   const experimentalLayoutEnabled = useSettingsStore((s) => s.settings.experimentalMindMapLayoutEngine)
+  const mindMapAppearance = useSettingsStore((s) => s.settings.mindMapAppearance)
+  const updateSettings = useSettingsStore((s) => s.updateSettings)
   const nodeRevealRequest = useWorkspaceStore((s) => s.nodeRevealRequest)
   const requestNodeReveal = useWorkspaceStore((s) => s.requestNodeReveal)
 
@@ -205,6 +207,7 @@ export const MindMapView: React.FC = () => {
   const {
     forcePreview,
     handleAutoLayout,
+    handleApplyStrategy,
     handleRelayoutBranch,
     handleUnlockNode,
     handleForceDirectedPreview,
@@ -217,7 +220,6 @@ export const MindMapView: React.FC = () => {
     visibleNodeIds,
     nodes,
     measuredNodeSizes,
-    experimentalLayoutEnabled,
     layoutStrategy,
     commitMindMapLayout,
     setFeedback,
@@ -245,8 +247,8 @@ export const MindMapView: React.FC = () => {
     graphRootNode,
     measuredNodeSizes,
     measuredNodeSizeSignature,
-    experimentalLayoutEnabled,
     layoutStrategy,
+    appearance: mindMapAppearance,
     depthByNodeId,
     visibleNodeIds,
     collapsedBranchSides,
@@ -295,7 +297,6 @@ export const MindMapView: React.FC = () => {
     getNodeDescendantIds,
     moveNodeToParent,
     commitMindMapLayout,
-    experimentalLayoutEnabled,
     layoutStrategy,
     setFeedback,
   })
@@ -431,6 +432,7 @@ export const MindMapView: React.FC = () => {
         ref={flowWrapperRef}
         nodes={nodes}
         edges={edges}
+        background={mindMapAppearance.canvasBackground}
         nodesDraggable={!forcePreview}
         onNodeClick={(event, node) => {
           setSelectedRelationId(null)
@@ -463,6 +465,7 @@ export const MindMapView: React.FC = () => {
         searchOpen={searchOpen}
         experimentalLayoutEnabled={experimentalLayoutEnabled}
         layoutStrategy={layoutStrategy}
+        mindMapAppearance={mindMapAppearance}
         forcePreviewActive={forcePreviewActive}
         feedback={feedback}
         diagnosticsOpen={diagnosticsOpen}
@@ -476,7 +479,14 @@ export const MindMapView: React.FC = () => {
         contextNodeOperationState={contextMenu ? getNodeOperationState(contextMenu.nodeId) : null}
         deleteMessage={deleteMessage}
         onModeChange={setMode}
-        onStrategyChange={handleStrategyChange}
+        onStrategyChange={(strategy) => {
+          handleStrategyChange(strategy)
+          handleApplyStrategy(strategy)
+        }}
+        onAppearanceChange={(changes) => {
+          const currentAppearance = useSettingsStore.getState().settings.mindMapAppearance
+          void updateSettings({ mindMapAppearance: { ...currentAppearance, ...changes } })
+        }}
         onAutoLayout={handleAutoLayout}
         onForceDirectedPreview={handleForceDirectedPreview}
         onToggleDiagnostics={overlayHandlers.handleToggleDiagnostics}

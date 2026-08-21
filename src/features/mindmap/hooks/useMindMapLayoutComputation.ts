@@ -2,6 +2,7 @@ import React from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Edge, Node } from 'reactflow'
 import type { MindMapLayoutStrategy, MindMapLayoutState, NodeRelation, OutlineNode } from '../../../types/document'
+import type { MindMapAppearanceSettings } from '../../../types/settings'
 import { createAgentDocumentPreview } from '../../agent/agentChangePlan'
 import type { AgentDocumentPreview } from '../../agent/agentTypes'
 import { findNodeById } from '../mindMapActions'
@@ -22,8 +23,8 @@ import {
   type MindMapNodeSize,
 } from '../layoutEngine'
 import type { MindMapNodeData } from '../MindMapNode'
-import { DEFAULT_MIND_MAP_LAYOUT_STRATEGY } from '../mindMapLayoutState'
 import { buildMindMapRelationEdges } from '../mindMapRelationEdges'
+import { styleHierarchyEdges } from '../mindMapVisualPresets'
 
 export interface MindMapLayoutHandlers {
   toggleBranchSide: MindMapNodeData['onToggleBranchSide']
@@ -49,8 +50,8 @@ interface UseMindMapLayoutComputationParams {
   graphRootNode: OutlineNode | null
   measuredNodeSizes: Record<string, MindMapNodeSize>
   measuredNodeSizeSignature: string
-  experimentalLayoutEnabled: boolean
   layoutStrategy: MindMapLayoutStrategy
+  appearance: MindMapAppearanceSettings
   depthByNodeId: Map<string, number>
   visibleNodeIds: Set<string>
   collapsedBranchSides: Set<string>
@@ -79,8 +80,8 @@ export function useMindMapLayoutComputation({
   graphRootNode,
   measuredNodeSizes,
   measuredNodeSizeSignature,
-  experimentalLayoutEnabled,
   layoutStrategy,
+  appearance,
   depthByNodeId,
   visibleNodeIds,
   collapsedBranchSides,
@@ -115,7 +116,7 @@ export function useMindMapLayoutComputation({
   React.useEffect(() => {
     if (!currentDoc) return
 
-    const activeStrategy = experimentalLayoutEnabled ? layoutStrategy : DEFAULT_MIND_MAP_LAYOUT_STRATEGY
+    const activeStrategy = layoutStrategy
     const layoutRoot = previewLayoutRoot ?? graphRootNode ?? currentDoc.root
     const rawGraph = outlineToGraph(layoutRoot, collapsedNodeIds, undefined)
     const nodeSizes = buildMindMapNodeSizes(layoutRoot, measuredNodeSizes)
@@ -141,6 +142,7 @@ export function useMindMapLayoutComputation({
             matched: !previewInsertion && !exportClean && matchedNodeIds.includes(node.id),
             activeMatch: !previewInsertion && !exportClean && node.id === activeMatchNodeId,
             hasTags: !previewInsertion && Boolean(sourceNode?.tags?.length),
+            appearance,
             exportClean,
             checked: previewInsertion ? undefined : sourceNode?.checked,
             agentPreview: previewInsertion || exportClean ? undefined : agentPreview.nodePreviews.get(node.id),
@@ -178,7 +180,15 @@ export function useMindMapLayoutComputation({
       nodeSizes,
       mode: validFocusRootNodeId || searchQuery || agentPreview.insertionsByParentId.size > 0 ? 'transient' : 'persistent',
     }
-    const initialLayouted = forcePreview ?? layoutMindMap(layoutInput)
+    const initialLayouted = forcePreview
+      ? {
+          ...forcePreview,
+          nodes: forcePreview.nodes.map((node) => ({
+            ...node,
+            data: layoutInput.graphData.nodes.find((graphNode) => graphNode.id === node.id)?.data ?? node.data,
+          })),
+        }
+      : layoutMindMap(layoutInput)
     const sideFilteredGraph = filterCollapsedBranchSides(
       layoutInput.graphData,
       initialLayouted.edges,
@@ -203,7 +213,7 @@ export function useMindMapLayoutComputation({
     const renderedNodes = attachLayoutNodeSizes(layouted.nodes, nodeSizes)
     setNodes(renderedNodes)
     setEdges([
-      ...layouted.edges,
+      ...styleHierarchyEdges(layouted.edges, appearance),
       ...buildMindMapRelationEdges(
         currentDoc.relations,
         renderedNodes,
@@ -221,10 +231,10 @@ export function useMindMapLayoutComputation({
     currentDoc,
     depthByNodeId,
     editingNodeId,
-    experimentalLayoutEnabled,
     exportClean,
     forcePreview,
     graphRootNode,
+    appearance,
     handlers,
     layoutStrategy,
     matchedNodeIds,

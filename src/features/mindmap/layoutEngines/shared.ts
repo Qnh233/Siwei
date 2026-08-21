@@ -148,6 +148,72 @@ export function attachDirectionalEdgeHandles(
   })
 }
 
+export function attachVerticalEdgeHandles(
+  edges: FlowEdge[],
+  nodes: FlowNode[],
+  nodeSizes: Record<string, MindMapNodeSize>,
+): FlowEdge[] {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]))
+
+  return edges.map((edge) => {
+    const source = nodeById.get(edge.source)
+    const target = nodeById.get(edge.target)
+    if (!source || !target) return edge
+
+    const sourceSize = resolveNodeSize(source.id, nodeSizes)
+    const targetSize = resolveNodeSize(target.id, nodeSizes)
+    const sourceCenterY = source.position.y + sourceSize.height / 2
+    const targetCenterY = target.position.y + targetSize.height / 2
+    const targetIsAbove = targetCenterY < sourceCenterY
+
+    return {
+      ...edge,
+      sourceHandle: targetIsAbove ? 'top-source' : 'bottom-source',
+      targetHandle: targetIsAbove ? 'bottom-target' : 'top-target',
+    }
+  })
+}
+
+export function attachNearestEdgeHandles(
+  edges: FlowEdge[],
+  nodes: FlowNode[],
+  nodeSizes: Record<string, MindMapNodeSize>,
+): FlowEdge[] {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]))
+
+  return edges.map((edge) => {
+    const source = nodeById.get(edge.source)
+    const target = nodeById.get(edge.target)
+    if (!source || !target) return edge
+    const sourceSize = resolveNodeSize(source.id, nodeSizes)
+    const targetSize = resolveNodeSize(target.id, nodeSizes)
+    const sourceCenter = {
+      x: source.position.x + sourceSize.width / 2,
+      y: source.position.y + sourceSize.height / 2,
+    }
+    const targetCenter = {
+      x: target.position.x + targetSize.width / 2,
+      y: target.position.y + targetSize.height / 2,
+    }
+    const dx = targetCenter.x - sourceCenter.x
+    const dy = targetCenter.y - sourceCenter.y
+
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return {
+        ...edge,
+        sourceHandle: dx < 0 ? 'left-source' : 'right-source',
+        targetHandle: dx < 0 ? 'right-target' : 'left-target',
+      }
+    }
+
+    return {
+      ...edge,
+      sourceHandle: dy < 0 ? 'top-source' : 'bottom-source',
+      targetHandle: dy < 0 ? 'bottom-target' : 'top-target',
+    }
+  })
+}
+
 export function findOutlineNode(root: OutlineNode, nodeId: string): OutlineNode | null {
   if (root.id === nodeId) return root
   for (const child of root.children) {

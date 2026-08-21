@@ -28,7 +28,8 @@ export function useMindMapStrategyState({
   const [collapsedBranchSides, setCollapsedBranchSides] = React.useState<Set<string>>(new Set())
 
   React.useEffect(() => {
-    if (!experimentalLayoutEnabled && layoutStrategy !== DEFAULT_MIND_MAP_LAYOUT_STRATEGY) {
+    const experimentalStrategy = layoutStrategy === 'radial-mindmap' || layoutStrategy === 'free-canvas'
+    if (!experimentalLayoutEnabled && experimentalStrategy) {
       setLayoutStrategy(DEFAULT_MIND_MAP_LAYOUT_STRATEGY)
       setFeedback('已切换为经典布局')
     }
@@ -38,10 +39,10 @@ export function useMindMapStrategyState({
     const savedStrategy = currentDoc?.mindMapLayout?.strategy
     if (
       !currentDoc
-      || !experimentalLayoutEnabled
       || !savedStrategy
       || savedStrategy === layoutStrategy
       || !isSupportedMindMapLayoutStrategy(savedStrategy)
+      || (!experimentalLayoutEnabled && (savedStrategy === 'radial-mindmap' || savedStrategy === 'free-canvas'))
       || restoredStrategyDocumentIdRef.current === currentDoc.id
     ) {
       return

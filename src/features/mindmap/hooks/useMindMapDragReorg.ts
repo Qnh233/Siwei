@@ -11,7 +11,6 @@ import {
 } from '../mindMapReorder'
 import {
   createMindMapLayoutState,
-  DEFAULT_MIND_MAP_LAYOUT_STRATEGY,
 } from '../mindMapLayoutState'
 import type { MindMapMode } from '../MindMapToolbar'
 import type { MindMapNodeData } from '../MindMapNode'
@@ -29,7 +28,6 @@ interface UseMindMapDragReorgParams {
   getNodeDescendantIds: (nodeId: string) => Set<string>
   moveNodeToParent: (sourceNodeId: string, targetParentNodeId: string, targetIndex: number) => void
   commitMindMapLayout: (layout: MindMapLayoutState) => void
-  experimentalLayoutEnabled: boolean
   layoutStrategy: MindMapLayoutStrategy
   setFeedback: (message: string) => void
 }
@@ -47,7 +45,6 @@ export function useMindMapDragReorg({
   getNodeDescendantIds,
   moveNodeToParent,
   commitMindMapLayout,
-  experimentalLayoutEnabled,
   layoutStrategy,
   setFeedback,
 }: UseMindMapDragReorgParams) {
@@ -200,7 +197,7 @@ export function useMindMapDragReorg({
     }, {})
 
     commitMindMapLayout(createMindMapLayoutState(positions, {
-      strategy: experimentalLayoutEnabled ? layoutStrategy : DEFAULT_MIND_MAP_LAYOUT_STRATEGY,
+      strategy: layoutStrategy,
       lockedNodeIds: new Set([draggedNode.id]),
       previous: currentDoc.mindMapLayout,
     }))
@@ -209,7 +206,6 @@ export function useMindMapDragReorg({
     childIndexByNodeId,
     commitMindMapLayout,
     currentDoc,
-    experimentalLayoutEnabled,
     forcePreviewActive,
     getNodeDescendantIds,
     layoutStrategy,

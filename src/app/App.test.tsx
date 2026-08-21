@@ -17,6 +17,10 @@ const appSettings: AppSettings = {
   theme: 'system',
   focusMode: false,
   experimentalMindMapLayoutEngine: false,
+  mindMapAppearance: {
+    canvasBackground: 'paper', hierarchyLineStyle: 'curve', hierarchyLinePattern: 'solid',
+    hierarchyLineColor: '#AA8C72', nodeShape: 'rounded', nodeBorderColor: '#B79272', nodeFillColor: '#FAF6EC',
+  },
   keybindings: { overrides: {} },
   agent: {
     enabled: false,

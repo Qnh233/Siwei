@@ -7,6 +7,12 @@ interface LayoutGraphOptions {
   savedLayout?: Record<string, MindMapLayoutPosition>
   preserveSavedPositions?: boolean
   nodeSizes?: Record<string, { width: number; height: number }>
+  rankdir?: 'LR' | 'RL' | 'TB' | 'BT'
+  nodesep?: number
+  ranksep?: number
+  marginx?: number
+  marginy?: number
+  ranker?: 'network-simplex' | 'tight-tree' | 'longest-path'
 }
 
 /**
@@ -22,16 +28,16 @@ export function layoutGraph(graphData: GraphData, options: LayoutGraphOptions = 
   const nodeWidth = 200
   const nodeHeight = 44
 
-  // Set up graph layout options
-  // rankdir: 'LR' (Left-to-Right) is standard for mind maps
-  // nodesep: separation between nodes in the same rank
-  // ranksep: separation between ranks (columns)
+  const rankdir = options.rankdir ?? 'LR'
+
+  // 结构布局共用 Dagre，但由各布局预设决定方向和疏密。
   dagreGraph.setGraph({
-    rankdir: 'LR',
-    nodesep: 30,
-    ranksep: 80,
-    marginx: 40,
-    marginy: 40,
+    rankdir,
+    nodesep: options.nodesep ?? 30,
+    ranksep: options.ranksep ?? 80,
+    marginx: options.marginx ?? 40,
+    marginy: options.marginy ?? 40,
+    ranker: options.ranker ?? 'network-simplex',
   })
 
   // Add nodes to dagre
@@ -54,10 +60,17 @@ export function layoutGraph(graphData: GraphData, options: LayoutGraphOptions = 
     const savedPosition = options.savedLayout?.[node.id]
     const size = options.nodeSizes?.[node.id] ?? { width: nodeWidth, height: nodeHeight }
     
+    const vertical = rankdir === 'TB' || rankdir === 'BT'
+    const reversed = rankdir === 'RL' || rankdir === 'BT'
+
     return {
       ...node,
-      targetPosition: Position.Left,
-      sourcePosition: Position.Right,
+      targetPosition: vertical
+        ? (reversed ? Position.Bottom : Position.Top)
+        : (reversed ? Position.Right : Position.Left),
+      sourcePosition: vertical
+        ? (reversed ? Position.Top : Position.Bottom)
+        : (reversed ? Position.Left : Position.Right),
       position: options.preserveSavedPositions && savedPosition
         ? savedPosition
         : {

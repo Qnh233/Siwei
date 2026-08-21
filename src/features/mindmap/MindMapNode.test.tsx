@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { MindMapNode } from './MindMapNode'
+import { DEFAULT_SETTINGS } from '../../types/settings'
 
 vi.mock('reactflow', () => ({
   Handle: ({ id }: { id?: string }) => <span data-testid={`handle-${id}`} />,
@@ -24,6 +25,7 @@ const createProps = (overrides: Partial<ComponentProps<typeof MindMapNode>> = {}
       matched: false,
       activeMatch: false,
       hasTags: false,
+      appearance: DEFAULT_SETTINGS.mindMapAppearance,
       editing: false,
       onToggleCollapse: vi.fn(),
       onTextChange: vi.fn(),
@@ -68,5 +70,20 @@ describe('MindMapNode', () => {
     render(<MindMapNode {...props} />)
 
     expect(screen.queryByRole('button', { name: '添加子节点' })).not.toBeInTheDocument()
+  })
+
+  it('applies theme node shape and neutral surface colors', () => {
+    const { props } = createProps()
+    props.data.appearance = {
+      ...DEFAULT_SETTINGS.mindMapAppearance,
+      nodeShape: 'pill',
+      nodeBorderColor: '#5C978F',
+      nodeFillColor: '#F0F8F6',
+    }
+    render(<MindMapNode {...props} />)
+
+    const node = screen.getByTestId('mindmap-node-node-1')
+    expect(node).toHaveClass('rounded-[28px]')
+    expect(node).toHaveStyle({ borderColor: '#5C978F', backgroundColor: '#F0F8F6' })
   })
 })

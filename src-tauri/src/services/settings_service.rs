@@ -100,6 +100,7 @@ mod tests {
             theme: ThemeMode::Dark,
             focus_mode: true,
             experimental_mind_map_layout_engine: true,
+            mind_map_appearance: Default::default(),
             keybindings: Default::default(),
             agent: Default::default(),
         };
@@ -138,7 +139,55 @@ mod tests {
         assert_eq!(settings.theme, ThemeMode::System);
         assert!(!settings.focus_mode);
         assert!(!settings.experimental_mind_map_layout_engine);
+        assert_eq!(settings.mind_map_appearance, Default::default());
         assert!(settings.keybindings.overrides.is_empty());
+    }
+
+    #[test]
+    fn fills_new_mind_map_appearance_fields_from_legacy_partial_settings() {
+        let dir = tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("settings.json"),
+            r##"{
+              "autoSaveEnabled": true,
+              "autoSaveIntervalMs": 1500,
+              "defaultViewMode": "mindmap",
+              "sidebarCollapsed": false,
+              "mindMapAppearance": {
+                "canvasBackground": "grid",
+                "hierarchyLineStyle": "orthogonal"
+              },
+              "agent": {
+                "enabled": false,
+                "provider": "openai-compatible",
+                "model": "gpt-4.1",
+                "baseUrl": "https://api.openai.com/v1",
+                "thinkingLevel": "medium",
+                "contextScope": "currentDocument"
+              }
+            }"##,
+        )
+        .unwrap();
+
+        let settings = get_settings(dir.path()).unwrap();
+
+        assert_eq!(
+            settings.mind_map_appearance.canvas_background,
+            crate::models::settings::MindMapCanvasBackground::Grid
+        );
+        assert_eq!(
+            settings.mind_map_appearance.hierarchy_line_style,
+            crate::models::settings::MindMapHierarchyLineStyle::Orthogonal
+        );
+        assert_eq!(
+            settings.mind_map_appearance.hierarchy_line_pattern,
+            crate::models::settings::MindMapHierarchyLinePattern::Solid
+        );
+        assert_eq!(settings.mind_map_appearance.hierarchy_line_color, "#AA8C72");
+        assert_eq!(
+            settings.mind_map_appearance.node_shape,
+            crate::models::settings::MindMapNodeShape::Rounded
+        );
     }
 
     #[test]
@@ -178,6 +227,19 @@ mod tests {
             .to_string();
 
         assert!(error.contains("自动保存延迟必须在 500-10000 毫秒之间"));
+    }
+
+    #[test]
+    fn rejects_invalid_mind_map_colors() {
+        let dir = tempdir().unwrap();
+        let mut settings = AppSettings::default();
+        settings.mind_map_appearance.hierarchy_line_color = "not-a-color".to_string();
+
+        let error = update_settings(dir.path(), settings)
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("#RRGGBB"));
     }
 
     #[test]

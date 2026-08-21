@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Controls,
   Edge,
   ConnectionMode,
@@ -16,8 +17,10 @@ import ReactFlow, {
   ReactFlowInstance,
 } from 'reactflow'
 
+import type { MindMapCanvasBackground } from '../../types/settings'
 import { MindMapNode, type MindMapNodeData } from './MindMapNode'
 import { MindMapRelationEdge } from './MindMapRelationEdge'
+import { mindMapCanvasBackgroundStyle } from './mindMapVisualPresets'
 
 const nodeTypes = {
   custom: MindMapNode,
@@ -31,6 +34,7 @@ const edgeTypes = {
 interface MindMapCanvasProps {
   nodes: Node<MindMapNodeData>[]
   edges: Edge[]
+  background: MindMapCanvasBackground
   nodesDraggable: boolean
   onNodeClick: (event: React.MouseEvent, node: Node) => void
   onNodeDoubleClick: (event: React.MouseEvent, node: Node) => void
@@ -52,6 +56,7 @@ interface MindMapCanvasProps {
 export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps>(({
   nodes,
   edges,
+  background,
   nodesDraggable,
   onNodeClick,
   onNodeDoubleClick,
@@ -70,7 +75,7 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
   onEdgeDoubleClick,
 }, ref) => {
   return (
-    <div ref={ref} className="h-full w-full">
+    <div ref={ref} className="h-full w-full" style={mindMapCanvasBackgroundStyle(background)}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -101,7 +106,7 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
         connectionMode={ConnectionMode.Loose}
         connectOnClick
         elementsSelectable
-        className="text-zinc-700"
+        className="text-zinc-700 !bg-transparent"
       >
         <Controls className="!bg-[#FAF8F4] !border-amber-900/10 !shadow-fabric [&>button]:!border-amber-900/5 [&>button]:hover:!bg-[#EFECE3]" />
         <MiniMap
@@ -123,7 +128,12 @@ export const MindMapCanvas = React.forwardRef<HTMLDivElement, MindMapCanvasProps
           maskStrokeColor="rgba(139, 90, 43, 0.08)"
           className="siwei-mindmap-minimap opacity-60 transition-opacity hover:opacity-95"
         />
-        <Background color="#FAF8F4" gap={16} size={1} />
+        {background === 'dots' && (
+          <Background variant={BackgroundVariant.Dots} color="#B7A99A" gap={18} size={1.15} />
+        )}
+        {background === 'grid' && (
+          <Background variant={BackgroundVariant.Lines} color="#D5CCC0" gap={24} size={1} />
+        )}
       </ReactFlow>
     </div>
   )

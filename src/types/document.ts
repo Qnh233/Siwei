@@ -38,6 +38,9 @@ export interface MindMapLayoutPosition {
 export type MindMapLayoutStrategy =
   | 'classic-dagre'
   | 'balanced-mindmap'
+  | 'tree-down'
+  | 'org-chart'
+  | 'timeline'
   | 'radial-mindmap'
   | 'free-canvas'
   | 'force-directed'

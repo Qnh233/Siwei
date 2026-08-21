@@ -14,6 +14,9 @@ import { balancedMindMapEngine } from './layoutEngines/balancedMindMapEngine'
 import { classicDagreEngine } from './layoutEngines/classicDagreEngine'
 import { freeCanvasEngine, relayoutMindMapBranch } from './layoutEngines/freeCanvasEngine'
 import { radialMindMapEngine } from './layoutEngines/radialMindMapEngine'
+import { treeDownEngine } from './layoutEngines/treeDownEngine'
+import { orgChartEngine } from './layoutEngines/orgChartEngine'
+import { timelineEngine } from './layoutEngines/timelineEngine'
 import { applyForceDirectedLayoutPreview } from './layoutEngines/forceDirectedEngine'
 import {
   estimateMindMapNodeSize,
@@ -96,6 +99,9 @@ export function layoutMindMap(input: MindMapLayoutInput): MindMapLayoutResult {
 
 function resolveLayoutEngine(strategy: MindMapLayoutStrategy): MindMapLayoutEngine {
   if (strategy === 'balanced-mindmap') return balancedMindMapEngine
+  if (strategy === 'tree-down') return treeDownEngine
+  if (strategy === 'org-chart') return orgChartEngine
+  if (strategy === 'timeline') return timelineEngine
   if (strategy === 'radial-mindmap') return radialMindMapEngine
   if (strategy === 'free-canvas') return freeCanvasEngine
   if (!SUPPORTED_MIND_MAP_LAYOUT_STRATEGIES.includes(strategy as typeof SUPPORTED_MIND_MAP_LAYOUT_STRATEGIES[number])) {

@@ -171,6 +171,10 @@ describe('siweiApi', () => {
       theme: 'dark',
       focusMode: true,
       experimentalMindMapLayoutEngine: true,
+      mindMapAppearance: {
+        canvasBackground: 'grid', hierarchyLineStyle: 'orthogonal', hierarchyLinePattern: 'dashed',
+        hierarchyLineColor: '#53728B', nodeShape: 'square', nodeBorderColor: '#6C879A', nodeFillColor: '#F5F8F9',
+      },
       keybindings: { overrides: {} },
       agent: {
         enabled: false,
