@@ -113,10 +113,10 @@ export function strategyForDiagramType(type: MindMapDiagramType): MindMapLayoutS
 }
 
 export function styleHierarchyEdges(edges: Edge[], appearance: MindMapAppearanceSettings): Edge[] {
-  const strokeDasharray = appearance.hierarchyLinePattern === 'dashed' ? '7 5' : undefined
+  const strokeDasharray = appearance.hierarchyLinePattern === 'dashed' ? '7 5' : 'none'
 
   return edges.map((edge) => {
-    if (edge.data?.kind === 'relation') return edge
+    if (edge.data?.kind === 'relation' || edge.data?.kind === 'agent-insertion') return edge
 
     if (appearance.hierarchyLineStyle === 'orthogonal') {
       return {

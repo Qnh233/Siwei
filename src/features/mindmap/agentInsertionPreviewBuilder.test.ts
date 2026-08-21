@@ -70,9 +70,12 @@ describe('agentInsertionPreviewBuilder', () => {
       label: '新增分支',
       agentInsertionDepth: 1,
     })
-    expect(attached.edges.find((edge) => edge.target === previewNodeId)?.style).toMatchObject({
-      stroke: '#059669',
-      strokeDasharray: '4 4',
+    expect(attached.edges.find((edge) => edge.target === previewNodeId)).toMatchObject({
+      data: { kind: 'agent-insertion' },
+      style: {
+        stroke: '#059669',
+        strokeDasharray: '4 4',
+      },
     })
   })
 })

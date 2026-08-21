@@ -158,17 +158,7 @@
 }
 
 .react-flow__edge-path {
-  transition: stroke 0.15s ease;
-  stroke-dasharray: 4 4; /* stitching line edge */
-  stroke: rgba(0, 0, 0, 0.15) !important;
-}
-
-.react-flow__edge:hover .react-flow__edge-path {
-  stroke: #52525B !important; /* darker zinc on hover */
-  stroke-width: 2px !important;
-}
-.dark .react-flow__edge:hover .react-flow__edge-path {
-  stroke: #D4D4D8 !important;
+  transition: stroke 0.15s ease, stroke-width 0.15s ease;
 }
 
 .siwei-mindmap-minimap {

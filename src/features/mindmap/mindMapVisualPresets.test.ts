@@ -37,6 +37,27 @@ describe('mindMapVisualPresets', () => {
     expect(styled[1]).toEqual(relationEdge)
   })
 
+  it('fully replaces legacy hierarchy stroke styles for solid custom colors', () => {
+    const hierarchyEdge = {
+      id: 'legacy-edge',
+      source: 'a',
+      target: 'b',
+      type: 'smoothstep',
+      style: { stroke: '#A27B5C', strokeWidth: 1.8, strokeDasharray: '4 4' },
+    }
+
+    const [styled] = styleHierarchyEdges([hierarchyEdge], {
+      ...DEFAULT_SETTINGS.mindMapAppearance,
+      hierarchyLinePattern: 'solid',
+      hierarchyLineColor: '#3F8078',
+    })
+
+    expect(styled.style).toMatchObject({
+      stroke: '#3F8078',
+      strokeDasharray: 'none',
+    })
+  })
+
   it('ships themes as editable appearance bundles instead of layout strategies', () => {
     const engineering = MIND_MAP_THEME_PRESETS.find((preset) => preset.id === 'engineering-grid')
     const bubbles = MIND_MAP_THEME_PRESETS.find((preset) => preset.id === 'teal-bubbles')

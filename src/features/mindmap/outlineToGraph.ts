@@ -29,14 +29,13 @@ export function outlineToGraph(
       type: parentId === null ? 'root' : 'custom',
     })
 
-    // If there is a parent, draw a dashed stitching thread edge
+    // 层级边只表达树结构；颜色、线型和几何样式统一由渲染层应用。
     if (parentId) {
       edges.push({
         id: `${parentId}-${node.id}`,
         source: parentId,
         target: node.id,
         type: 'smoothstep',
-        style: { stroke: '#A27B5C', strokeWidth: 1.8, strokeDasharray: '4 4' },
       })
     }
 

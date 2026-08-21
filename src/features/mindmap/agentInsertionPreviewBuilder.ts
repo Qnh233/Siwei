@@ -97,6 +97,7 @@ export function attachAgentInsertionPreviewGraphData(
       isAgentInsertionNodeId(edge.target)
         ? {
           ...edge,
+          data: { ...edge.data, kind: 'agent-insertion' },
           style: { stroke: '#059669', strokeWidth: 1.8, strokeDasharray: '4 4' },
         }
         : edge
