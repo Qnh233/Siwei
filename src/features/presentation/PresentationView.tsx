@@ -6,6 +6,7 @@ import type { ViewMode } from '../document/documentStore'
 import { OutlineInlineContent } from '../outline/OutlineInlineContent'
 import { outlineToGraph } from '../mindmap/outlineToGraph'
 import { layoutGraph } from '../mindmap/layoutGraph'
+import { buildMindMapNodeSizes } from '../mindmap/nodeDataAssembler'
 import {
   collectPresentationNodeMeta,
   createRevealProgress,
@@ -26,6 +27,7 @@ interface PresentationNodeData {
   depth: number
   childCount: number
   checked?: boolean
+  note?: string
 }
 
 const nodeTypes = {
@@ -204,7 +206,9 @@ const PresentationOutlineNode: React.FC<{
           <OutlineInlineContent text={node.text || '空白节点'} />
         </div>
         {node.note?.trim() && (
-          <div className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-zinc-500 [overflow-wrap:anywhere]">{node.note}</div>
+          <div className="mt-1.5 whitespace-pre-wrap border-l-2 border-amber-700/25 pl-2 text-xs leading-relaxed text-zinc-500 [overflow-wrap:anywhere]">
+            {node.note}
+          </div>
         )}
       </div>
       <div className="mt-2 space-y-2">
@@ -227,7 +231,9 @@ const PresentationMindMap: React.FC<{
 }> = ({ root, visibleNodeIds }) => {
   const { nodes, edges } = React.useMemo(() => {
     const metaByNodeId = collectPresentationNodeMeta(root)
-    const graph = layoutGraph(outlineToGraph(root, new Set(), visibleNodeIds))
+    const graph = layoutGraph(outlineToGraph(root, new Set(), visibleNodeIds), {
+      nodeSizes: buildMindMapNodeSizes(root, {}),
+    })
     return {
       nodes: graph.nodes.map((node): Node<PresentationNodeData> => {
         const meta = metaByNodeId.get(node.id) ?? { depth: 0, childCount: 0 }
@@ -239,6 +245,7 @@ const PresentationMindMap: React.FC<{
             depth: meta.depth,
             childCount: meta.childCount,
             checked: findNodeById(root, node.id)?.checked,
+            note: findNodeById(root, node.id)?.note,
           },
         }
       }),
@@ -286,6 +293,11 @@ function PresentationMindMapNode({ data }: NodeProps<PresentationNodeData>) {
         )}
         <OutlineInlineContent text={data.label || '空白节点'} />
       </div>
+      {data.note?.trim() && (
+        <div className="mt-1.5 whitespace-pre-wrap border-l-2 border-amber-700/25 pl-2 text-left text-[10px] leading-[1.45] text-zinc-500 [overflow-wrap:anywhere]">
+          {data.note}
+        </div>
+      )}
       {data.childCount > 0 && (
         <div className="mt-1 text-[10px] font-medium text-amber-900/50">{data.childCount} 个子节点</div>
       )}

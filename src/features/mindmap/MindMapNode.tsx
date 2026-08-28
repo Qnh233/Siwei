@@ -4,6 +4,7 @@ import { Handle, NodeProps, Position } from 'reactflow'
 import { MindMapInlineEditor } from './MindMapInlineEditor'
 import type { AgentNodePreview } from '../agent/agentTypes'
 import { OutlineInlineContent } from '../outline/OutlineInlineContent'
+import { NodeNoteEditor } from '../outline/NodeNoteEditor'
 import type { MindMapAppearanceSettings } from '../../types/settings'
 
 export interface MindMapNodeData {
@@ -16,6 +17,7 @@ export interface MindMapNodeData {
   matched: boolean
   activeMatch: boolean
   hasTags: boolean
+  note?: string
   appearance: MindMapAppearanceSettings
   exportClean?: boolean
   dropState?: 'before' | 'child' | 'after' | null
@@ -236,6 +238,14 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
           {data.checked ? <Check className="h-3.5 w-3.5" /> : null}
         </button>
       </div>
+
+      <NodeNoteEditor
+        nodeId={id}
+        note={data.note}
+        variant="mindmap"
+        readOnly={Boolean(data.exportClean || data.agentInsertion)}
+        showEmptyAction={Boolean(selected && !data.exportClean && !data.agentInsertion && !data.editing)}
+      />
 
       {data.collapsed && hasChildren && (
         <div className="mt-1 text-[10px] font-medium text-amber-900/50">

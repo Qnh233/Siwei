@@ -1,83 +1,129 @@
 import React from 'react'
-import { FileText, X } from 'lucide-react'
+import { FileText } from 'lucide-react'
+
 import { useDocumentStore } from '../document/documentStore'
 
 interface NodeNoteEditorProps {
   nodeId: string
   note?: string
+  showEmptyAction?: boolean
+  readOnly?: boolean
+  variant?: 'outline' | 'mindmap'
 }
 
-export const NodeNoteEditor: React.FC<NodeNoteEditorProps> = ({ nodeId, note }) => {
+export const NodeNoteEditor: React.FC<NodeNoteEditorProps> = ({
+  nodeId,
+  note,
+  showEmptyAction = false,
+  readOnly = false,
+  variant = 'outline',
+}) => {
   const updateNodeNote = useDocumentStore((s) => s.updateNodeNote)
-  const [isOpen, setIsOpen] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
   const [draft, setDraft] = React.useState(note ?? '')
 
   React.useEffect(() => {
-    if (!isOpen) {
-      setDraft(note ?? '')
-    }
-  }, [isOpen, note])
+    if (!editing) setDraft(note ?? '')
+  }, [editing, note])
 
-  const commit = () => {
+  const commit = React.useCallback(() => {
     updateNodeNote(nodeId, draft)
-    setIsOpen(false)
+    setEditing(false)
+  }, [draft, nodeId, updateNodeNote])
+
+  const cancel = React.useCallback(() => {
+    setDraft(note ?? '')
+    setEditing(false)
+  }, [note])
+
+  if (editing && !readOnly) {
+    return (
+      <div
+        className={`nodrag nopan mt-1.5 border-l-2 border-amber-700/35 pl-2 ${variant === 'mindmap' ? 'text-left' : ''}`}
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <textarea
+          aria-label="节点注释"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            event.stopPropagation()
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              cancel()
+              return
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+              event.preventDefault()
+              commit()
+            }
+          }}
+          rows={variant === 'mindmap' ? 2 : 3}
+          className={`w-full resize-none bg-transparent pr-1 text-zinc-600 outline-none placeholder:text-zinc-400 ${
+            variant === 'mindmap'
+              ? 'min-h-10 text-[10px] leading-[1.45]'
+              : 'min-h-14 text-xs leading-relaxed'
+          }`}
+          placeholder="补充说明、出处或上下文…"
+          autoFocus
+        />
+      </div>
+    )
   }
 
-  return (
-    <div className="relative shrink-0">
+  if (note?.trim()) {
+    const content = (
+      <div
+        data-testid={`node-note-${nodeId}`}
+        className={`whitespace-pre-wrap border-l-2 border-amber-700/30 pl-2 text-left text-zinc-500 [overflow-wrap:anywhere] ${
+          variant === 'mindmap'
+            ? 'mt-1.5 text-[10px] leading-[1.45]'
+            : 'mt-1 text-[11px] leading-relaxed'
+        }`}
+      >
+        {note}
+      </div>
+    )
+
+    if (readOnly) return content
+
+    return (
       <button
         type="button"
+        aria-label="编辑注释"
+        title="编辑注释"
+        className="nodrag nopan block w-full cursor-text rounded-sm text-left outline-none transition hover:bg-amber-50/60 focus-visible:ring-1 focus-visible:ring-amber-300"
         onClick={(event) => {
           event.stopPropagation()
-          setIsOpen(true)
+          setEditing(true)
         }}
-        className={`flex h-6 w-6 items-center justify-center rounded-md border transition focus:outline-none ${
-          note
-            ? 'border-amber-700/35 bg-amber-100/70 text-amber-900'
-            : 'border-transparent text-zinc-400 opacity-0 group-hover:opacity-100 hover:bg-[#EFECE3]'
-        }`}
-        title={note ? '编辑备注' : '添加备注'}
+        onPointerDown={(event) => event.stopPropagation()}
       >
-        <FileText size={13} />
+        {content}
       </button>
+    )
+  }
 
-      {isOpen && (
-        <div
-          className="absolute right-0 top-7 z-50 w-72 rounded-lg border border-amber-900/20 bg-[#FFFCF5] p-3 shadow-xl"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-700">节点备注</span>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 focus:outline-none"
-              title="关闭"
-            >
-              <X size={13} />
-            </button>
-          </div>
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={commit}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                setDraft(note ?? '')
-                setIsOpen(false)
-              }
-              if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                event.preventDefault()
-                commit()
-              }
-            }}
-            className="h-28 w-full resize-none rounded-md border border-amber-900/15 bg-white/70 p-2 text-sm text-zinc-800 outline-none focus:border-amber-700/40"
-            placeholder="记录补充说明"
-            autoFocus
-          />
-        </div>
-      )}
-    </div>
+  if (!showEmptyAction || readOnly) return null
+
+  return (
+    <button
+      type="button"
+      aria-label="添加注释"
+      title="添加注释"
+      className={`nodrag nopan mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-zinc-400 outline-none transition hover:bg-amber-50 hover:text-amber-800 focus-visible:ring-1 focus-visible:ring-amber-300 ${
+        variant === 'mindmap' ? 'text-[9px]' : 'text-[10px]'
+      }`}
+      onClick={(event) => {
+        event.stopPropagation()
+        setEditing(true)
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <FileText size={variant === 'mindmap' ? 10 : 11} />
+      注释
+    </button>
   )
 }

@@ -25,6 +25,7 @@ const createProps = (overrides: Partial<ComponentProps<typeof MindMapNode>> = {}
       matched: false,
       activeMatch: false,
       hasTags: false,
+      note: undefined,
       appearance: DEFAULT_SETTINGS.mindMapAppearance,
       editing: false,
       onToggleCollapse: vi.fn(),
@@ -85,5 +86,14 @@ describe('MindMapNode', () => {
     const node = screen.getByTestId('mindmap-node-node-1')
     expect(node).toHaveClass('rounded-[28px]')
     expect(node).toHaveStyle({ borderColor: '#5C978F', backgroundColor: '#F0F8F6' })
+  })
+
+  it('renders an inline quoted note inside the mind map node', () => {
+    const { props } = createProps({ selected: true })
+    props.data.note = '导图节点注释'
+    render(<MindMapNode {...props} />)
+
+    expect(screen.getByTestId('node-note-node-1')).toHaveTextContent('导图节点注释')
+    expect(screen.getByTestId('node-note-node-1')).toHaveClass('border-l-2')
   })
 })

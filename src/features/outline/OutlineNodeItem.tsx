@@ -211,7 +211,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
             ? { transform: `translate3d(0, ${previewShiftY}px, 0)` }
             : undefined
       }
-      className={`group relative flex items-center h-9 px-2 rounded-lg transition-all duration-200 border ${
+      className={`group relative flex min-h-9 items-center px-2 py-1 rounded-lg transition-all duration-200 border ${
         isAgentDeleting
           ? 'bg-rose-50/80 border-rose-200 text-rose-800'
           : agentTextPreview
@@ -338,6 +338,13 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
             agentTextPreview={agentTextPreview}
           />
         )}
+        {!isAgentDeleting && (
+          <NodeNoteEditor
+            nodeId={node.id}
+            note={node.note}
+            showEmptyAction={isSelected && !agentTextPreview}
+          />
+        )}
       </div>
 
       <div
@@ -347,7 +354,6 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
         <div className="min-w-0 overflow-hidden">
           <NodeTagEditor nodeId={node.id} tags={node.tags} />
         </div>
-        <NodeNoteEditor nodeId={node.id} note={node.note} />
         {node.checked !== undefined && (
           <button
             type="button"

@@ -33,15 +33,16 @@ const DIAGNOSTIC_BOUNDS = 20000
 
 export function estimateMindMapNodeSize(node: OutlineNode): MindMapNodeSize {
   const textWidth = Math.min(MAX_ESTIMATED_NODE_WIDTH, Math.max(MIN_ESTIMATED_NODE_WIDTH, 96 + node.text.length * 8))
-  const metadataRows = [
-    node.note?.trim(),
-    node.tags?.length ? 'tags' : '',
-    node.checked !== undefined ? 'task' : '',
-  ].filter(Boolean).length
+  const note = node.note?.trim()
+  const noteRows = note
+    ? note.split('\n').reduce((rows, line) => rows + Math.max(1, Math.ceil(Array.from(line).length / 24)), 0)
+    : 0
+  const noteHeight = noteRows > 0 ? 6 + noteRows * 15 : 0
+  const metadataHeight = (node.tags?.length ? 18 : 0) + (node.checked !== undefined ? 18 : 0)
 
   return {
     width: textWidth,
-    height: DEFAULT_NODE_SIZE.height + metadataRows * 18,
+    height: DEFAULT_NODE_SIZE.height + noteHeight + metadataHeight,
   }
 }
 

@@ -300,6 +300,26 @@ describe('MindMapView', () => {
     expect(screen.queryByDisplayValue('导图重命名')).not.toBeInTheDocument()
   })
 
+  it('shows and edits the same node note inline in the mind map', async () => {
+    const doc = createDocument()
+    doc.root.children[1].note = '导图里的引用注释'
+    useDocumentStore.setState({ currentDoc: doc, selectedNodeId: 'node-2' })
+    render(<MindMapView />)
+
+    const node = within(screen.getByTestId('flow-node-node-2'))
+    expect(node.getByTestId('node-note-node-2')).toHaveTextContent('导图里的引用注释')
+
+    fireEvent.click(node.getByRole('button', { name: '编辑注释' }))
+    const editor = node.getByRole('textbox', { name: '节点注释' })
+    fireEvent.change(editor, { target: { value: '导图直接修改注释' } })
+    fireEvent.keyDown(editor, { key: 'Enter', ctrlKey: true })
+
+    await waitFor(() => {
+      expect(useDocumentStore.getState().currentDoc?.root.children[1].note).toBe('导图直接修改注释')
+    })
+    expect(node.getByTestId('node-note-node-2')).toHaveTextContent('导图直接修改注释')
+  })
+
   it('emits a reveal request when a mind map node is selected', () => {
     useDocumentStore.setState({ viewMode: 'split' })
     render(<MindMapView />)

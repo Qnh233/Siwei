@@ -347,6 +347,16 @@ describe('layoutMindMap', () => {
     expect(estimateMindMapNodeSize(rich).height).toBeGreaterThan(estimateMindMapNodeSize(plain).height)
   })
 
+  it('reserves more fallback height for multiline node notes', () => {
+    const singleLine = { ...createNode('single', '节点'), note: '一行注释' }
+    const multiLine = {
+      ...createNode('multi', '节点'),
+      note: '第一行注释\n第二行注释\n第三行注释',
+    }
+
+    expect(estimateMindMapNodeSize(multiLine).height).toBeGreaterThan(estimateMindMapNodeSize(singleLine).height)
+  })
+
   it('keeps free-canvas positions and deterministically places new nodes near their parent', () => {
     const freeRoot = createNode('root', 'Root', [
       createNode('parent', 'Parent', [

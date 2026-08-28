@@ -142,6 +142,7 @@ export function useMindMapLayoutComputation({
             matched: !previewInsertion && !exportClean && matchedNodeIds.includes(node.id),
             activeMatch: !previewInsertion && !exportClean && node.id === activeMatchNodeId,
             hasTags: !previewInsertion && Boolean(sourceNode?.tags?.length),
+            note: previewInsertion?.node.note ?? sourceNode?.note,
             appearance,
             exportClean,
             checked: previewInsertion ? undefined : sourceNode?.checked,

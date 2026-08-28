@@ -59,8 +59,9 @@ describe('OutlineNodeItem', () => {
     })
   }
 
-  it('keeps the note editor popover outside the clipped action toolbar', () => {
+  it('shows a node note inline below the outline text and edits it in place', () => {
     const node = createDocument().root.children[1]
+    node.note = '节点下方的引用注释'
 
     render(
       <OutlineNodeItem
@@ -74,13 +75,12 @@ describe('OutlineNodeItem', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTitle('添加备注'))
+    const note = screen.getByTestId('node-note-node-2')
+    expect(note).toHaveTextContent('节点下方的引用注释')
+    expect(note.closest('[data-node-id="node-2"]')).toBeInTheDocument()
 
-    const textarea = screen.getByPlaceholderText('记录补充说明')
-    const toolbar = textarea.closest('[data-node-actions]')
-
-    expect(toolbar).toBeInTheDocument()
-    expect(toolbar).not.toHaveClass('overflow-hidden')
+    fireEvent.click(screen.getByRole('button', { name: '编辑注释' }))
+    expect(screen.getByRole('textbox', { name: '节点注释' })).toBeInTheDocument()
   })
 
   it('opens the shared node context menu from an outline node', () => {
