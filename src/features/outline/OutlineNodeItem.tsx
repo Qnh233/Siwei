@@ -13,6 +13,9 @@ import { useNodeKeyboardHandling } from './hooks/useNodeKeyboardHandling'
 import { useSlashCommandMenu } from './hooks/useSlashCommandMenu'
 import type { AgentInsertionPreview, AgentNodePreview } from '../agent/agentTypes'
 import { useWorkspaceStore } from '../../app/workspaceStore'
+import { DocumentReferenceMenu } from '../references/DocumentReferenceMenu'
+import { useDocumentReferenceAutocomplete } from '../references/useDocumentReferenceAutocomplete'
+import type { LibraryDocumentItem } from '../../types/library'
 
 interface OutlineNodeItemProps {
   node: OutlineNode
@@ -53,6 +56,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
 }) => {
   const selectNode = useDocumentStore((s) => s.selectNode)
   const updateNodeText = useDocumentStore((s) => s.updateNodeText)
+  const insertDocumentReference = useDocumentStore((s) => s.insertDocumentReference)
   const toggleCollapse = useDocumentStore((s) => s.toggleCollapse)
   const indentNode = useDocumentStore((s) => s.indentNode)
   const outdentNode = useDocumentStore((s) => s.outdentNode)
@@ -66,6 +70,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
   const commitTextEditSession = useDocumentStore((s) => s.commitTextEditSession)
   const isFocusedNode = useDocumentStore((s) => s.focusedNodeId === node.id)
   const viewMode = useDocumentStore((s) => s.viewMode)
+  const currentDocumentId = useDocumentStore((s) => s.currentDoc?.id ?? null)
   const activeSurface = useWorkspaceStore((s) => s.activeSurface)
   const requestNodeReveal = useWorkspaceStore((s) => s.requestNodeReveal)
 
@@ -73,6 +78,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [isComposing, setIsComposing] = React.useState(false)
   const slashMenu = useSlashCommandMenu()
+  const referenceMenu = useDocumentReferenceAutocomplete(currentDocumentId)
   const {
     activeCommand,
     activeIndex,
@@ -171,12 +177,26 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
     onBatchOutdent,
   })
 
+  const selectDocumentReference = React.useCallback((item: LibraryDocumentItem) => {
+    const query = referenceMenu.query
+    if (!query) return
+    const inserted = insertDocumentReference(node.id, query.start, query.end, item)
+    if (!inserted) return
+    const caret = query.start + `[[${item.title}]]`.length
+    referenceMenu.close()
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(caret, caret)
+    })
+  }, [insertDocumentReference, node.id, referenceMenu])
+
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value
     updateNodeText(node.id, text)
-    
+    const referenceQuery = referenceMenu.update(text, e.target.selectionStart ?? text.length)
+
     // Check if ends with '/' to open command menu
-    if (text.endsWith('/')) {
+    if (!referenceQuery && text.endsWith('/')) {
       openSlashMenu()
     } else if (showSlashMenu && !text.includes('/')) {
       closeSlashMenu()
@@ -314,7 +334,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
       )}
 
       {/* Text Node */}
-      <div className="flex-1 min-w-0 pl-1.5">
+      <div className="relative flex-1 min-w-0 pl-1.5">
         {isSelected && !agentTextPreview ? (
           <input
             ref={inputRef}
@@ -323,7 +343,15 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
             onFocus={() => beginTextEditSession(node.id)}
             onBlur={() => commitTextEditSession(node.id)}
             onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
+            onKeyDown={(event) => {
+              const referenceResult = referenceMenu.handleKeyDown(event)
+              if (referenceResult === 'handled') return
+              if (referenceResult) {
+                selectDocumentReference(referenceResult)
+                return
+              }
+              handleKeyDown(event)
+            }}
             onCompositionStart={() => setIsComposing(true)}
             onCompositionEnd={() => setIsComposing(false)}
             className="w-full bg-transparent text-sm font-medium text-zinc-900 outline-none border-none p-0 focus:ring-0 placeholder-zinc-400"
@@ -331,11 +359,20 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
           />
         ) : (
           <OutlineNodeTextContent
+            nodeId={node.id}
             text={node.text}
             checked={node.checked}
             isAgentDeleting={isAgentDeleting}
             isAgentMoving={isAgentMoving}
             agentTextPreview={agentTextPreview}
+          />
+        )}
+        {isSelected && referenceMenu.query && !agentTextPreview && (
+          <DocumentReferenceMenu
+            items={referenceMenu.items}
+            activeIndex={referenceMenu.activeIndex}
+            isLoading={referenceMenu.isLoading}
+            onSelect={selectDocumentReference}
           />
         )}
         {!isAgentDeleting && (

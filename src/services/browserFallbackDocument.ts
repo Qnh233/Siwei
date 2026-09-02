@@ -8,23 +8,23 @@ export type BrowserFallbackTask = {
   tags: string[]
 }
 
-export function createDemoDocument(now: () => number): OutlineDocument {
+export function createDemoDocument(now: () => number, instanceId = 'demo'): OutlineDocument {
   const timestamp = now()
 
   return {
-    id: 'demo-doc',
+    id: `${instanceId}-doc`,
     title: '未命名文档',
     version: 1,
     createdAt: timestamp,
     updatedAt: timestamp,
     root: {
-      id: 'demo-root',
+      id: `${instanceId}-root`,
       text: '未命名文档',
       createdAt: timestamp,
       updatedAt: timestamp,
       children: [
         {
-          id: 'demo-node-1',
+          id: `${instanceId}-node-1`,
           text: '开始记录你的想法',
           createdAt: timestamp,
           updatedAt: timestamp,

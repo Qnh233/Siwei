@@ -8,6 +8,7 @@ import { createTreeTextSlice } from './treeTextSlice'
 type TreeActions = Pick<
   DocumentState,
   | 'updateNodeText'
+  | 'insertDocumentReference'
   | 'toggleCollapse'
   | 'indentNode'
   | 'outdentNode'

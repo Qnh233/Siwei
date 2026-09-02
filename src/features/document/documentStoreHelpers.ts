@@ -2,6 +2,7 @@ import { generateId } from '../../utils/id'
 import type { OutlineDocument, OutlineNode } from '../../types/document'
 import { pruneMindMapLayoutState } from '../mindmap/mindMapLayoutState'
 import { pruneNodeRelations } from './nodeRelations'
+import { pruneDocumentReferences } from '../references/documentReferences'
 import type { HistorySnapshot } from './documentStoreTypes'
 
 export function cloneDocument(doc: OutlineDocument): OutlineDocument {
@@ -58,11 +59,19 @@ export function getNodeAtPath(root: OutlineNode, path: number[]): OutlineNode {
 export function getDocumentWithVersionForSave(doc: OutlineDocument): OutlineDocument {
   const mindMapLayout = pruneMindMapLayoutState(doc.mindMapLayout, doc.root)
   const relations = pruneNodeRelations(doc.relations, doc.root)
-  const version = relations?.length ? Math.max(doc.version, 3) : mindMapLayout ? Math.max(doc.version, 2) : doc.version
+  const documentReferences = pruneDocumentReferences(doc.documentReferences, doc.root)
+  const version = documentReferences?.length
+    ? Math.max(doc.version, 4)
+    : relations?.length
+      ? Math.max(doc.version, 3)
+      : mindMapLayout
+        ? Math.max(doc.version, 2)
+        : doc.version
   return {
     ...doc,
     mindMapLayout,
     relations,
+    documentReferences,
     version,
   }
 }

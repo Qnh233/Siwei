@@ -4,6 +4,7 @@ import type { AppSettings } from '../types/settings'
 import { DEFAULT_SETTINGS } from '../types/settings'
 import type {
   LibraryDocumentItem,
+  LibraryDocumentQuery,
   LibraryPage,
   LibraryRefreshStatus,
   LibrarySearchResult,
@@ -25,6 +26,8 @@ type CommandArgs = Record<string, unknown> | undefined
 const now = () => Date.now()
 
 let currentDoc = createDemoDocument(now)
+let documentSequence = 1
+const savedDocuments = new Map<string, OutlineDocument>()
 let recentDocs: RecentDocItem[] = []
 let libraryDocs: LibraryDocumentItem[] = []
 let refreshStatus: LibraryRefreshStatus | null = null
@@ -40,12 +43,24 @@ let agentStatus: AgentStatus = {
   events: [],
 }
 
+function cloneDocument(doc: OutlineDocument): OutlineDocument {
+  return JSON.parse(JSON.stringify(doc)) as OutlineDocument
+}
+
 export async function browserInvokeFallback<T>(command: string, args?: CommandArgs): Promise<T> {
   switch (command) {
     case 'new_document':
-      currentDoc = createDemoDocument(now)
+      documentSequence += 1
+      currentDoc = createDemoDocument(now, `demo-${documentSequence}`)
       return currentDoc as T
     case 'save_document':
+      if (args?.doc) {
+        currentDoc = cloneDocument(args.doc as OutlineDocument)
+        if (typeof args?.path === 'string') {
+          savedDocuments.set(args.path, cloneDocument(currentDoc))
+        }
+      }
+      return undefined as T
     case 'export_markdown':
     case 'export_json':
     case 'export_opml':
@@ -57,7 +72,12 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
       return undefined as T
     case 'export_mindmap_asset':
       return undefined as T
-    case 'load_document':
+    case 'load_document': {
+      const path = typeof args?.path === 'string' ? args.path : ''
+      const saved = path ? savedDocuments.get(path) : undefined
+      if (saved) currentDoc = cloneDocument(saved)
+      return cloneDocument(currentDoc) as T
+    }
     case 'import_json':
     case 'import_markdown':
       return currentDoc as T
@@ -140,8 +160,26 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
     case 'refresh_library':
     case 'rebuild_library_index':
       return libraryDocs as T
-    case 'query_library_docs':
-      return page(libraryDocs, args?.query as { limit?: number; offset?: number } | undefined) as T
+    case 'query_library_docs': {
+      const query = args?.query as LibraryDocumentQuery | undefined
+      const keyword = query?.keyword?.trim().toLowerCase()
+      let docs = libraryDocs.filter((item) => {
+        if (query?.status && query.status !== 'all') {
+          if (query.status === 'failed') {
+            if (!['missing', 'invalid', 'error'].includes(item.status)) return false
+          } else if (item.status !== query.status) {
+            return false
+          }
+        }
+        return !keyword || item.title.toLowerCase().includes(keyword) || item.path.toLowerCase().includes(keyword)
+      })
+      const direction = query?.sortDirection === 'asc' ? 1 : -1
+      docs = [...docs].sort((left, right) => {
+        if (query?.sortBy === 'title') return left.title.localeCompare(right.title) * direction
+        return (left.updatedAt - right.updatedAt) * direction
+      })
+      return page(docs, query) as T
+    }
     case 'add_library_doc':
     case 'refresh_library_doc': {
       const path = String(args?.path ?? 'demo.siwei.json')

@@ -1,13 +1,18 @@
 import type { OutlineNode } from '../../../types/document'
+import { generateId } from '../../../utils/id'
 import {
   findPath,
   updateNodeAtPath,
 } from '../../../utils/tree'
+import {
+  insertDocumentReferenceText,
+  reconcileDocumentReferences,
+} from '../../references/documentReferences'
 import { createSnapshot } from '../documentStoreHelpers'
 import type { DocumentStoreContext } from '../documentStoreContext'
 import type { DocumentState } from '../documentStoreTypes'
 
-type TreeTextActions = Pick<DocumentState, 'updateNodeText' | 'toggleCollapse'>
+type TreeTextActions = Pick<DocumentState, 'updateNodeText' | 'insertDocumentReference' | 'toggleCollapse'>
 
 export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActions {
   const { get, set, beginMutation, setHistoryAfterMutation } = context
@@ -25,10 +30,17 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
       if (currentDoc.root.id === nodeId) {
         if (currentDoc.root.text === text && currentDoc.title === text) return
 
+        const nodeReferences = reconcileDocumentReferences(text, currentDoc.documentReferences, nodeId)
+        const documentReferences = [
+          ...(currentDoc.documentReferences ?? []).filter((reference) => reference.sourceNodeId !== nodeId),
+          ...nodeReferences,
+        ]
+
         const updatedDoc = {
           ...currentDoc,
           title: text,
           updatedAt: now,
+          documentReferences,
           root: {
             ...currentDoc.root,
             text,
@@ -59,6 +71,12 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
       }
       if (currentNode.text === text) return
 
+      const nodeReferences = reconcileDocumentReferences(text, currentDoc.documentReferences, nodeId)
+      const documentReferences = [
+        ...(currentDoc.documentReferences ?? []).filter((reference) => reference.sourceNodeId !== nodeId),
+        ...nodeReferences,
+      ]
+
       const newRoot = updateNodeAtPath(currentDoc.root, path, (node) => ({
         ...node,
         text,
@@ -68,6 +86,7 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
       const updatedDoc = {
         ...currentDoc,
         root: newRoot,
+        documentReferences,
         updatedAt: now,
       }
 
@@ -83,6 +102,60 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
         canRedo: state.activeTextEditSession?.nodeId === nodeId ? false : state.canRedo,
       }))
       if (before) setHistoryAfterMutation(before)
+    },
+
+    insertDocumentReference: (nodeId, rangeStart, rangeEnd, target) => {
+      const { currentDoc } = get()
+      if (!currentDoc) return null
+      const path = currentDoc.root.id === nodeId ? [] : findPath(currentDoc.root, nodeId)
+      if (path === null) return null
+
+      let currentNode = currentDoc.root
+      for (const index of path) currentNode = currentNode.children[index]
+
+      const now = Date.now()
+      const referenceId = generateId()
+      const nodeReferences = (currentDoc.documentReferences ?? []).filter(
+        (reference) => reference.sourceNodeId === nodeId,
+      )
+      const inserted = insertDocumentReferenceText({
+        text: currentNode.text,
+        references: nodeReferences,
+        sourceNodeId: nodeId,
+        rangeStart,
+        rangeEnd,
+        target,
+        now,
+        id: referenceId,
+      })
+      const before = get().activeTextEditSession?.nodeId === nodeId ? null : beginMutation()
+      const nextRoot = path.length === 0
+        ? { ...currentDoc.root, text: inserted.text, updatedAt: now }
+        : updateNodeAtPath(currentDoc.root, path, (node) => ({ ...node, text: inserted.text, updatedAt: now }))
+      const updatedDoc = {
+        ...currentDoc,
+        title: path.length === 0 ? inserted.text : currentDoc.title,
+        root: nextRoot,
+        documentReferences: [
+          ...(currentDoc.documentReferences ?? []).filter((reference) => reference.sourceNodeId !== nodeId),
+          ...inserted.references,
+        ],
+        updatedAt: now,
+      }
+
+      set((state) => ({
+        currentDoc: updatedDoc,
+        isDirty: state.cleanSnapshotKey === null
+          ? true
+          : createSnapshot(updatedDoc, state.selectedNodeId, state.collapsedNodeIds).key !== state.cleanSnapshotKey,
+        activeTextEditSession: state.activeTextEditSession?.nodeId === nodeId
+          ? { ...state.activeTextEditSession, didChange: true }
+          : state.activeTextEditSession,
+        canUndo: state.activeTextEditSession?.nodeId === nodeId ? true : state.canUndo,
+        canRedo: state.activeTextEditSession?.nodeId === nodeId ? false : state.canRedo,
+      }))
+      if (before) setHistoryAfterMutation(before)
+      return referenceId
     },
 
     toggleCollapse: (nodeId) => {

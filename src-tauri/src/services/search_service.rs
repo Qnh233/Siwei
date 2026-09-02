@@ -156,6 +156,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node(
                 "root",
                 "Root",
@@ -189,6 +190,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "Root", Vec::new()),
         };
 
@@ -206,6 +208,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "文档😀测试", Vec::new()),
         };
 
@@ -231,6 +234,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "Root", vec![child]),
         };
 
@@ -263,6 +267,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "Root", vec![child]),
         };
 

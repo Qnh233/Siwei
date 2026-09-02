@@ -169,6 +169,7 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
         <div className="min-w-0 flex-1">
           {data.editing ? (
             <MindMapInlineEditor
+              nodeId={id}
               value={data.label}
               onChange={(value) => data.onTextChange(id, value)}
               onCommit={() => data.onCommitEdit(id)}
@@ -196,7 +197,7 @@ export const MindMapNode: React.FC<NodeProps<MindMapNodeData>> = ({ id, data, se
                         : 'font-medium text-zinc-700'
               }`}>
                 {data.label ? (
-                  <OutlineInlineContent text={data.label} />
+                  <OutlineInlineContent text={data.label} nodeId={id} />
                 ) : (
                   <span className="font-normal italic text-zinc-400">空白节点</span>
                 )}

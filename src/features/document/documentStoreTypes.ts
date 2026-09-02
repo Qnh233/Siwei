@@ -78,6 +78,12 @@ export interface DocumentState {
   clearOutlineSelection: () => void
 
   updateNodeText: (nodeId: string, text: string) => void
+  insertDocumentReference: (
+    nodeId: string,
+    rangeStart: number,
+    rangeEnd: number,
+    target: { documentId: string; title: string; path: string },
+  ) => string | null
   toggleCollapse: (nodeId: string) => void
   indentNode: (nodeId: string) => void
   outdentNode: (nodeId: string) => void

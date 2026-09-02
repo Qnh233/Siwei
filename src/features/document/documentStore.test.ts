@@ -380,6 +380,52 @@ describe('documentStore', () => {
     expect(savedDoc.relations?.[0]).toMatchObject({ id: 'rel-1', label: '依赖' })
   })
 
+  it('saves resolved document references as version four and prunes stale metadata', async () => {
+    const doc = createDocument()
+    doc.root.children[0].text = '参考 [[目标文档]]'
+    useDocumentStore.setState({
+      currentDoc: {
+        ...doc,
+        documentReferences: [
+          {
+            id: 'doc-ref-live',
+            sourceNodeId: 'node-1',
+            sourceOccurrence: 0,
+            targetDocumentId: 'target-doc',
+            targetPath: 'C:/docs/target.siwei.json',
+            label: '目标文档',
+            createdAt: 1,
+            updatedAt: 1,
+          },
+          {
+            id: 'doc-ref-stale',
+            sourceNodeId: 'node-2',
+            sourceOccurrence: 0,
+            targetDocumentId: 'stale-doc',
+            targetPath: 'C:/docs/stale.siwei.json',
+            label: '已删除引用',
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      },
+      collapsedNodeIds: new Set<string>(),
+      currentFilePath: 'demo.siwei.json',
+      isDirty: true,
+    })
+    apiMock.saveDocument.mockResolvedValueOnce(undefined)
+    apiMock.addRecentDoc.mockResolvedValueOnce(undefined)
+
+    expect(await useDocumentStore.getState().saveDoc()).toBe(true)
+    const savedDoc = apiMock.saveDocument.mock.calls[0][1]
+    expect(savedDoc.version).toBe(4)
+    expect(savedDoc.documentReferences).toHaveLength(1)
+    expect(savedDoc.documentReferences?.[0]).toMatchObject({
+      id: 'doc-ref-live',
+      targetDocumentId: 'target-doc',
+    })
+  })
+
   it('cleans orphan layout records before saving', async () => {
     const doc = createDocument()
     useDocumentStore.setState({

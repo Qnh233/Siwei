@@ -28,6 +28,15 @@ describe('inlineContentParser', () => {
     ])
   })
 
+  it('keeps unfinished or empty wiki references as plain text', () => {
+    expect(parseInlineNodeContent('参考 [[产品规划')).toEqual([
+      { kind: 'text', text: '参考 [[产品规划' },
+    ])
+    expect(parseInlineNodeContent('参考 [[   ]]')).toEqual([
+      { kind: 'text', text: '参考 [[   ]]' },
+    ])
+  })
+
   it('renders parsed content without turning unsupported links into anchors', () => {
     render(<OutlineInlineContent text="[本地](file://demo) **重点** `code` $x^2$" />)
 
@@ -35,5 +44,14 @@ describe('inlineContentParser', () => {
     expect(screen.getByText('重点').tagName).toBe('STRONG')
     expect(screen.getByText('code').tagName).toBe('CODE')
     expect(screen.getByText('x^2')).toHaveAttribute('data-inline-latex')
+  })
+
+  it('parses document references and keeps their occurrence order', () => {
+    expect(parseInlineNodeContent('参考 [[产品规划]]，再看 [[竞品调研]]')).toEqual([
+      { kind: 'text', text: '参考 ' },
+      { kind: 'documentReference', text: '产品规划', occurrence: 0 },
+      { kind: 'text', text: '，再看 ' },
+      { kind: 'documentReference', text: '竞品调研', occurrence: 1 },
+    ])
   })
 })

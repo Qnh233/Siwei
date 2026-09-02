@@ -1,8 +1,13 @@
 import React from 'react'
 import { findKeybindingCommand } from '../../app/keybindings/keybindingMatcher'
 import { useSettingsStore } from '../settings/settingsStore'
+import { useDocumentStore } from '../document/documentStore'
+import { DocumentReferenceMenu } from '../references/DocumentReferenceMenu'
+import { useDocumentReferenceAutocomplete } from '../references/useDocumentReferenceAutocomplete'
+import type { LibraryDocumentItem } from '../../types/library'
 
 interface MindMapInlineEditorProps {
+  nodeId: string
   value: string
   onChange: (value: string) => void
   onCommit: () => void
@@ -18,6 +23,7 @@ interface MindMapInlineEditorProps {
 }
 
 export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
+  nodeId,
   value,
   onChange,
   onCommit,
@@ -32,6 +38,9 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
   onToggleChecked,
 }) => {
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const currentDocumentId = useDocumentStore((state) => state.currentDoc?.id ?? null)
+  const insertDocumentReference = useDocumentStore((state) => state.insertDocumentReference)
+  const referenceMenu = useDocumentReferenceAutocomplete(currentDocumentId)
   const isComposingRef = React.useRef(false)
   const [isComposing, setIsComposing] = React.useState(false)
   const [draftValue, setDraftValue] = React.useState(value)
@@ -55,9 +64,33 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
     onCommit()
   }, [draftValue, onChange, onCommit])
 
+  const selectDocumentReference = React.useCallback((item: LibraryDocumentItem) => {
+    const query = referenceMenu.query
+    if (!query) return
+    if (!insertDocumentReference(nodeId, query.start, query.end, item)) return
+
+    const syntax = `[[${item.title}]]`
+    const nextValue = `${draftValue.slice(0, query.start)}${syntax}${draftValue.slice(query.end)}`
+    const caret = query.start + syntax.length
+    setDraftValue(nextValue)
+    setLastCommittedValue(nextValue)
+    referenceMenu.close()
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(caret, caret)
+    })
+  }, [draftValue, insertDocumentReference, nodeId, referenceMenu])
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation()
     if (isComposingRef.current) return
+
+    const referenceResult = referenceMenu.handleKeyDown(event)
+    if (referenceResult === 'handled') return
+    if (referenceResult) {
+      selectDocumentReference(referenceResult)
+      return
+    }
 
     const command = findKeybindingCommand(
       'mindmap',
@@ -112,36 +145,49 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
   }
 
   return (
-    <input
-      ref={inputRef}
-      aria-label="编辑节点文本"
-      className="nodrag nopan w-full min-w-0 rounded-md border border-amber-700/30 bg-white/80 px-2 py-1 text-center text-xs font-semibold leading-relaxed text-zinc-800 shadow-inner outline-none focus:border-amber-700"
-      value={draftValue}
-      placeholder="空白节点"
-      onChange={(event) => {
-        setDraftValue(event.target.value)
-        if (!isComposingRef.current) {
-          onChange(event.target.value)
-          setLastCommittedValue(event.target.value)
-        }
-      }}
-      onBlur={() => commitDraft()}
-      onCompositionStart={() => {
-        isComposingRef.current = true
-        setIsComposing(true)
-      }}
-      onCompositionEnd={(event) => {
-        const committedValue = event.currentTarget.value
-        isComposingRef.current = false
-        setIsComposing(false)
-        setDraftValue(committedValue)
-        onChange(committedValue)
-        setLastCommittedValue(committedValue)
-      }}
-      onPointerDown={keepMouseEventInsideEditor}
-      onMouseDown={keepMouseEventInsideEditor}
-      onClick={keepMouseEventInsideEditor}
-      onKeyDown={handleKeyDown}
-    />
+    <div className="relative w-full min-w-0">
+      <input
+        ref={inputRef}
+        aria-label="编辑节点文本"
+        className="nodrag nopan w-full min-w-0 rounded-md border border-amber-700/30 bg-white/80 px-2 py-1 text-center text-xs font-semibold leading-relaxed text-zinc-800 shadow-inner outline-none focus:border-amber-700"
+        value={draftValue}
+        placeholder="空白节点"
+        onChange={(event) => {
+          const nextValue = event.target.value
+          setDraftValue(nextValue)
+          referenceMenu.update(nextValue, event.target.selectionStart ?? nextValue.length)
+          if (!isComposingRef.current) {
+            onChange(nextValue)
+            setLastCommittedValue(nextValue)
+          }
+        }}
+        onBlur={() => commitDraft()}
+        onCompositionStart={() => {
+          isComposingRef.current = true
+          setIsComposing(true)
+        }}
+        onCompositionEnd={(event) => {
+          const committedValue = event.currentTarget.value
+          isComposingRef.current = false
+          setIsComposing(false)
+          setDraftValue(committedValue)
+          referenceMenu.update(committedValue, event.currentTarget.selectionStart ?? committedValue.length)
+          onChange(committedValue)
+          setLastCommittedValue(committedValue)
+        }}
+        onPointerDown={keepMouseEventInsideEditor}
+        onMouseDown={keepMouseEventInsideEditor}
+        onClick={keepMouseEventInsideEditor}
+        onKeyDown={handleKeyDown}
+      />
+      {referenceMenu.query && (
+        <DocumentReferenceMenu
+          items={referenceMenu.items}
+          activeIndex={referenceMenu.activeIndex}
+          isLoading={referenceMenu.isLoading}
+          onSelect={selectDocumentReference}
+        />
+      )}
+    </div>
   )
 }

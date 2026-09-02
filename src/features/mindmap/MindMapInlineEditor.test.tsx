@@ -21,6 +21,7 @@ function renderEditorWithParentHandlers(value = '第二节点') {
       onKeyDown={parentKeyDown}
     >
       <MindMapInlineEditor
+        nodeId="node-2"
         value={value}
         onChange={vi.fn()}
         onCommit={vi.fn()}

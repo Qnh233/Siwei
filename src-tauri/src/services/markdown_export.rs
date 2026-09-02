@@ -104,6 +104,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node(
                 "root",
                 "Project",
@@ -130,6 +131,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node(
                 "root",
                 "Project",
@@ -159,6 +161,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "Project", vec![task]),
         };
 

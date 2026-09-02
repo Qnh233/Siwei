@@ -5,6 +5,7 @@ export type InlineContentToken =
   | { kind: 'code'; text: string }
   | { kind: 'link'; text: string; href: string }
   | { kind: 'latex'; text: string }
+  | { kind: 'documentReference'; text: string; occurrence: number }
 
 function isHttpUrl(value: string): boolean {
   return /^https?:\/\//i.test(value)
@@ -28,9 +29,34 @@ function malformedSpanEnd(text: string, start: number): number {
 export function parseInlineNodeContent(text: string): InlineContentToken[] {
   const tokens: InlineContentToken[] = []
   let index = 0
+  let documentReferenceOccurrence = 0
 
   while (index < text.length) {
     const rest = text.slice(index)
+    const documentReference = rest.match(/^\[\[([^\[\]\n]+)\]\]/)
+    if (documentReference) {
+      const [raw, label] = documentReference
+      const trimmedLabel = label.trim()
+      if (!trimmedLabel) {
+        pushText(tokens, raw)
+        index += raw.length
+        continue
+      }
+      tokens.push({
+        kind: 'documentReference',
+        text: trimmedLabel,
+        occurrence: documentReferenceOccurrence,
+      })
+      documentReferenceOccurrence += 1
+      index += raw.length
+      continue
+    }
+    if (rest.startsWith('[[')) {
+      // 未闭合 wiki 引用按普通文本处理，并确保解析游标前进。
+      pushText(tokens, '[[')
+      index += 2
+      continue
+    }
     const markdownLink = rest.match(/^\[([^\]]+)]\(([^)]+)\)/)
     if (markdownLink) {
       const [raw, label, href] = markdownLink
@@ -99,7 +125,7 @@ export function parseInlineNodeContent(text: string): InlineContentToken[] {
       continue
     }
 
-    const nextSpecial = rest.search(/(\*\*|\*|`|\$|\[[^\]]+]\(|https?:\/\/)/i)
+    const nextSpecial = rest.search(/(\[\[|\*\*|\*|`|\$|\[[^\]]+]\(|https?:\/\/)/i)
     if (nextSpecial === -1) {
       pushText(tokens, rest)
       break

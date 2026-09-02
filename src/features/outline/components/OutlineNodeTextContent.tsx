@@ -2,6 +2,7 @@ import React from 'react'
 import { OutlineInlineContent } from '../OutlineInlineContent'
 
 interface OutlineNodeTextContentProps {
+  nodeId: string
   text: string
   checked?: boolean
   isAgentDeleting: boolean
@@ -10,6 +11,7 @@ interface OutlineNodeTextContentProps {
 }
 
 export const OutlineNodeTextContent: React.FC<OutlineNodeTextContentProps> = ({
+  nodeId,
   text,
   checked,
   isAgentDeleting,
@@ -30,7 +32,7 @@ export const OutlineNodeTextContent: React.FC<OutlineNodeTextContentProps> = ({
         }`}
       >
         {text ? (
-          <OutlineInlineContent text={text} />
+          <OutlineInlineContent text={text} nodeId={nodeId} />
         ) : (
           <span className="font-normal italic text-zinc-400">空白织线</span>
         )}

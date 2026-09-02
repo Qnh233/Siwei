@@ -149,6 +149,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "Project", vec![node("child", "Task", Vec::new())]),
         };
 
@@ -388,6 +389,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: node("root", "Project", vec![task]),
         }
     }

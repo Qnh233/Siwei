@@ -6,7 +6,19 @@ export interface OutlineDocument {
   updatedAt: number
   mindMapLayout?: MindMapLayoutState
   relations?: NodeRelation[]
+  documentReferences?: DocumentReference[]
   root: OutlineNode
+}
+
+export interface DocumentReference {
+  id: string
+  sourceNodeId: string
+  sourceOccurrence: number
+  targetDocumentId: string
+  targetPath: string
+  label: string
+  createdAt: number
+  updatedAt: number
 }
 
 export type NodeRelationDirection = 'one-way' | 'two-way'

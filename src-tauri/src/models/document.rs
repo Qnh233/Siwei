@@ -19,7 +19,22 @@ pub struct OutlineDocument {
     pub mind_map_layout: Option<MindMapLayoutState>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub relations: Vec<NodeRelation>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub document_references: Vec<DocumentReference>,
     pub root: OutlineNode,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentReference {
+    pub id: String,
+    pub source_node_id: String,
+    pub source_occurrence: u32,
+    pub target_document_id: String,
+    pub target_path: String,
+    pub label: String,
+    pub created_at: u64,
+    pub updated_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -148,6 +163,7 @@ impl OutlineDocument {
             updated_at: timestamp,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: OutlineNode::new(title, timestamp),
         }
     }
@@ -173,9 +189,53 @@ impl OutlineDocument {
             ));
         }
         self.validate_relations(&node_ids)?;
+        if !self.document_references.is_empty() && self.version < 4 {
+            return Err(AppError::Validation(
+                "包含文档引用的文档版本必须至少为 4".to_string(),
+            ));
+        }
+        self.validate_document_references(&node_ids)?;
         if let Some(layout) = &self.mind_map_layout {
             layout.validate()?;
         }
+        Ok(())
+    }
+
+    fn validate_document_references(&self, node_ids: &HashSet<String>) -> Result<(), AppError> {
+        let mut reference_ids = HashSet::new();
+        let mut source_occurrences = HashSet::new();
+
+        for reference in &self.document_references {
+            if reference.id.trim().is_empty() || !reference_ids.insert(reference.id.clone()) {
+                return Err(AppError::Validation(
+                    "文档引用 ID 不能为空且不能重复".to_string(),
+                ));
+            }
+            if !node_ids.contains(&reference.source_node_id) {
+                return Err(AppError::Validation(format!(
+                    "文档引用来源节点不存在: {}",
+                    reference.source_node_id
+                )));
+            }
+            if !source_occurrences.insert((
+                reference.source_node_id.clone(),
+                reference.source_occurrence,
+            )) {
+                return Err(AppError::Validation(
+                    "同一节点的文档引用位置不能重复".to_string(),
+                ));
+            }
+            if reference.target_document_id.trim().is_empty()
+                || reference.target_path.trim().is_empty()
+                || reference.label.trim().is_empty()
+            {
+                return Err(AppError::Validation("文档引用目标信息不能为空".to_string()));
+            }
+            if reference.created_at == 0 || reference.updated_at == 0 {
+                return Err(AppError::Validation("文档引用时间戳必须大于 0".to_string()));
+            }
+        }
+
         Ok(())
     }
 
@@ -427,9 +487,9 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        MindMapLayoutNodeSource, MindMapLayoutNodeState, MindMapLayoutPosition, MindMapLayoutState,
-        MindMapLayoutStrategy, NodeRelation, NodeRelationCurveOffset, NodeRelationDirection,
-        NodeRelationHandle, OutlineDocument, OutlineNode,
+        DocumentReference, MindMapLayoutNodeSource, MindMapLayoutNodeState, MindMapLayoutPosition,
+        MindMapLayoutState, MindMapLayoutStrategy, NodeRelation, NodeRelationCurveOffset,
+        NodeRelationDirection, NodeRelationHandle, OutlineDocument, OutlineNode,
     };
 
     fn sample_doc() -> OutlineDocument {
@@ -453,6 +513,7 @@ mod tests {
             updated_at: 1,
             mind_map_layout: None,
             relations: Vec::new(),
+            document_references: Vec::new(),
             root: OutlineNode {
                 id: "root_123".to_string(),
                 text: "Title".to_string(),
@@ -559,7 +620,64 @@ mod tests {
         assert_eq!(doc.version, 1);
         assert!(doc.mind_map_layout.is_none());
         assert!(doc.relations.is_empty());
+        assert!(doc.document_references.is_empty());
         assert!(doc.validate().is_ok());
+    }
+
+    #[test]
+    fn serializes_and_validates_document_references_as_version_four_data() {
+        let mut doc = sample_doc();
+        doc.version = 4;
+        doc.root.children[0].text = "See [[Target]]".to_string();
+        doc.document_references.push(DocumentReference {
+            id: "doc_ref_1".to_string(),
+            source_node_id: "child_123".to_string(),
+            source_occurrence: 0,
+            target_document_id: "target_doc".to_string(),
+            target_path: "C:/docs/target.siwei.json".to_string(),
+            label: "Target".to_string(),
+            created_at: 1,
+            updated_at: 2,
+        });
+
+        assert!(doc.validate().is_ok());
+        assert_eq!(
+            serde_json::to_value(doc).unwrap()["documentReferences"][0],
+            json!({
+                "id": "doc_ref_1",
+                "sourceNodeId": "child_123",
+                "sourceOccurrence": 0,
+                "targetDocumentId": "target_doc",
+                "targetPath": "C:/docs/target.siwei.json",
+                "label": "Target",
+                "createdAt": 1,
+                "updatedAt": 2
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_document_references_before_version_four_or_with_missing_source_nodes() {
+        let mut doc = sample_doc();
+        doc.document_references.push(DocumentReference {
+            id: "doc_ref_1".to_string(),
+            source_node_id: "child_123".to_string(),
+            source_occurrence: 0,
+            target_document_id: "target_doc".to_string(),
+            target_path: "C:/docs/target.siwei.json".to_string(),
+            label: "Target".to_string(),
+            created_at: 1,
+            updated_at: 1,
+        });
+
+        assert!(doc.validate().unwrap_err().to_string().contains("至少为 4"));
+        doc.version = 4;
+        doc.document_references[0].source_node_id = "missing".to_string();
+        assert!(doc
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("来源节点不存在"));
     }
 
     #[test]
@@ -600,6 +718,7 @@ mod tests {
     #[test]
     fn rejects_dangling_and_self_relations_but_allows_parallel_pairs() {
         let mut doc = sample_doc();
+        doc.version = 3;
         doc.relations = vec![NodeRelation {
             id: "rel_1".to_string(),
             source_node_id: "root_123".to_string(),
