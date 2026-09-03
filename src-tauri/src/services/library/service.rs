@@ -268,6 +268,7 @@ mod tests {
             mind_map_layout: None,
             relations: Vec::new(),
             document_references: Vec::new(),
+            entity_mentions: Vec::new(),
             root: node("root", title, vec![task]),
         }
     }

@@ -16,6 +16,9 @@ import { useWorkspaceStore } from '../../app/workspaceStore'
 import { DocumentReferenceMenu } from '../references/DocumentReferenceMenu'
 import { useDocumentReferenceAutocomplete } from '../references/useDocumentReferenceAutocomplete'
 import type { LibraryDocumentItem } from '../../types/library'
+import { EntityMentionMenu } from '../mentions/EntityMentionMenu'
+import { useEntityMentionAutocomplete } from '../mentions/useEntityMentionAutocomplete'
+import type { EntityMentionTarget } from '../mentions/entityMentions'
 
 interface OutlineNodeItemProps {
   node: OutlineNode
@@ -57,6 +60,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
   const selectNode = useDocumentStore((s) => s.selectNode)
   const updateNodeText = useDocumentStore((s) => s.updateNodeText)
   const insertDocumentReference = useDocumentStore((s) => s.insertDocumentReference)
+  const insertEntityMention = useDocumentStore((s) => s.insertEntityMention)
   const toggleCollapse = useDocumentStore((s) => s.toggleCollapse)
   const indentNode = useDocumentStore((s) => s.indentNode)
   const outdentNode = useDocumentStore((s) => s.outdentNode)
@@ -79,6 +83,7 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
   const [isComposing, setIsComposing] = React.useState(false)
   const slashMenu = useSlashCommandMenu()
   const referenceMenu = useDocumentReferenceAutocomplete(currentDocumentId)
+  const mentionMenu = useEntityMentionAutocomplete()
   const {
     activeCommand,
     activeIndex,
@@ -190,13 +195,29 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
     })
   }, [insertDocumentReference, node.id, referenceMenu])
 
+  const selectEntityMention = React.useCallback((item: EntityMentionTarget) => {
+    const query = mentionMenu.query
+    if (!query) return
+    const inserted = insertEntityMention(node.id, query.start, query.end, item)
+    if (!inserted) return
+    const caret = query.start + `@${item.mentionText}`.length
+    mentionMenu.close()
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(caret, caret)
+    })
+  }, [insertEntityMention, mentionMenu, node.id])
+
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const text = e.target.value
     updateNodeText(node.id, text)
-    const referenceQuery = referenceMenu.update(text, e.target.selectionStart ?? text.length)
+    const caret = e.target.selectionStart ?? text.length
+    const referenceQuery = referenceMenu.update(text, caret)
+    const mentionQuery = referenceQuery ? null : mentionMenu.update(text, caret)
+    if (referenceQuery) mentionMenu.close()
 
     // Check if ends with '/' to open command menu
-    if (!referenceQuery && text.endsWith('/')) {
+    if (!referenceQuery && !mentionQuery && text.endsWith('/')) {
       openSlashMenu()
     } else if (showSlashMenu && !text.includes('/')) {
       closeSlashMenu()
@@ -344,6 +365,12 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
             onBlur={() => commitTextEditSession(node.id)}
             onChange={handleTextChange}
             onKeyDown={(event) => {
+              const mentionResult = mentionMenu.handleKeyDown(event)
+              if (mentionResult === 'handled') return
+              if (mentionResult) {
+                selectEntityMention(mentionResult)
+                return
+              }
               const referenceResult = referenceMenu.handleKeyDown(event)
               if (referenceResult === 'handled') return
               if (referenceResult) {
@@ -373,6 +400,13 @@ export const OutlineNodeItem: React.FC<OutlineNodeItemProps> = ({
             activeIndex={referenceMenu.activeIndex}
             isLoading={referenceMenu.isLoading}
             onSelect={selectDocumentReference}
+          />
+        )}
+        {isSelected && mentionMenu.query && !agentTextPreview && (
+          <EntityMentionMenu
+            items={mentionMenu.items}
+            activeIndex={mentionMenu.activeIndex}
+            onSelect={selectEntityMention}
           />
         )}
         {!isAgentDeleting && (

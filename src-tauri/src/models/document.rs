@@ -21,6 +21,8 @@ pub struct OutlineDocument {
     pub relations: Vec<NodeRelation>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub document_references: Vec<DocumentReference>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entity_mentions: Vec<EntityMention>,
     pub root: OutlineNode,
 }
 
@@ -32,6 +34,20 @@ pub struct DocumentReference {
     pub source_occurrence: u32,
     pub target_document_id: String,
     pub target_path: String,
+    pub label: String,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityMention {
+    pub id: String,
+    pub source_node_id: String,
+    pub source_occurrence: u32,
+    pub kind: String,
+    pub target_id: String,
+    pub mention_text: String,
     pub label: String,
     pub created_at: u64,
     pub updated_at: u64,
@@ -164,6 +180,7 @@ impl OutlineDocument {
             mind_map_layout: None,
             relations: Vec::new(),
             document_references: Vec::new(),
+            entity_mentions: Vec::new(),
             root: OutlineNode::new(title, timestamp),
         }
     }
@@ -195,9 +212,64 @@ impl OutlineDocument {
             ));
         }
         self.validate_document_references(&node_ids)?;
+        if !self.entity_mentions.is_empty() && self.version < 5 {
+            return Err(AppError::Validation(
+                "包含实体提及的文档版本必须至少为 5".to_string(),
+            ));
+        }
+        self.validate_entity_mentions(&node_ids)?;
         if let Some(layout) = &self.mind_map_layout {
             layout.validate()?;
         }
+        Ok(())
+    }
+
+    fn validate_entity_mentions(&self, node_ids: &HashSet<String>) -> Result<(), AppError> {
+        let mut mention_ids = HashSet::new();
+        let mut source_occurrences = HashSet::new();
+
+        for mention in &self.entity_mentions {
+            if mention.id.trim().is_empty() || !mention_ids.insert(mention.id.clone()) {
+                return Err(AppError::Validation(
+                    "实体提及 ID 不能为空且不能重复".to_string(),
+                ));
+            }
+            if !node_ids.contains(&mention.source_node_id) {
+                return Err(AppError::Validation(format!(
+                    "实体提及来源节点不存在: {}",
+                    mention.source_node_id
+                )));
+            }
+            if !source_occurrences.insert((
+                mention.source_node_id.clone(),
+                mention.source_occurrence,
+            )) {
+                return Err(AppError::Validation(
+                    "同一节点的实体提及位置不能重复".to_string(),
+                ));
+            }
+            if mention.kind.trim().is_empty()
+                || mention.target_id.trim().is_empty()
+                || mention.mention_text.trim().is_empty()
+                || mention.label.trim().is_empty()
+            {
+                return Err(AppError::Validation("实体提及目标信息不能为空".to_string()));
+            }
+            if mention.mention_text.starts_with('@')
+                || !mention
+                    .mention_text
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+            {
+                return Err(AppError::Validation(
+                    "实体提及语法标识只能包含 ASCII 字母、数字、下划线或连字符".to_string(),
+                ));
+            }
+            if mention.created_at == 0 || mention.updated_at == 0 {
+                return Err(AppError::Validation("实体提及时间戳必须大于 0".to_string()));
+            }
+        }
+
         Ok(())
     }
 
@@ -487,9 +559,10 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        DocumentReference, MindMapLayoutNodeSource, MindMapLayoutNodeState, MindMapLayoutPosition,
-        MindMapLayoutState, MindMapLayoutStrategy, NodeRelation, NodeRelationCurveOffset,
-        NodeRelationDirection, NodeRelationHandle, OutlineDocument, OutlineNode,
+        DocumentReference, EntityMention, MindMapLayoutNodeSource, MindMapLayoutNodeState,
+        MindMapLayoutPosition, MindMapLayoutState, MindMapLayoutStrategy, NodeRelation,
+        NodeRelationCurveOffset, NodeRelationDirection, NodeRelationHandle, OutlineDocument,
+        OutlineNode,
     };
 
     fn sample_doc() -> OutlineDocument {
@@ -514,6 +587,7 @@ mod tests {
             mind_map_layout: None,
             relations: Vec::new(),
             document_references: Vec::new(),
+            entity_mentions: Vec::new(),
             root: OutlineNode {
                 id: "root_123".to_string(),
                 text: "Title".to_string(),
@@ -678,6 +752,74 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("来源节点不存在"));
+    }
+
+    #[test]
+    fn serializes_and_validates_entity_mentions_as_version_five_data() {
+        let mut doc = sample_doc();
+        doc.version = 5;
+        doc.root.children[0].text = "Ask @SiweiAgent".to_string();
+        doc.entity_mentions.push(EntityMention {
+            id: "mention_1".to_string(),
+            source_node_id: "child_123".to_string(),
+            source_occurrence: 0,
+            kind: "agent".to_string(),
+            target_id: "siwei-agent".to_string(),
+            mention_text: "SiweiAgent".to_string(),
+            label: "Siwei Agent".to_string(),
+            created_at: 1,
+            updated_at: 2,
+        });
+
+        assert!(doc.validate().is_ok());
+        assert_eq!(
+            serde_json::to_value(doc).unwrap()["entityMentions"][0],
+            json!({
+                "id": "mention_1",
+                "sourceNodeId": "child_123",
+                "sourceOccurrence": 0,
+                "kind": "agent",
+                "targetId": "siwei-agent",
+                "mentionText": "SiweiAgent",
+                "label": "Siwei Agent",
+                "createdAt": 1,
+                "updatedAt": 2
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_entity_mentions_before_version_five_or_with_invalid_targets() {
+        let mut doc = sample_doc();
+        doc.entity_mentions.push(EntityMention {
+            id: "mention_1".to_string(),
+            source_node_id: "child_123".to_string(),
+            source_occurrence: 0,
+            kind: "agent".to_string(),
+            target_id: "siwei-agent".to_string(),
+            mention_text: "SiweiAgent".to_string(),
+            label: "Siwei Agent".to_string(),
+            created_at: 1,
+            updated_at: 1,
+        });
+
+        assert!(doc.validate().unwrap_err().to_string().contains("至少为 5"));
+
+        doc.version = 5;
+        doc.entity_mentions[0].source_node_id = "missing".to_string();
+        assert!(doc
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("来源节点不存在"));
+
+        doc.entity_mentions[0].source_node_id = "child_123".to_string();
+        doc.entity_mentions[0].mention_text = "Siwei Agent".to_string();
+        assert!(doc
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("ASCII"));
     }
 
     #[test]

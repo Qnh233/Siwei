@@ -1,3 +1,5 @@
+import { matchEntityMentionAt } from '../mentions/entityMentions'
+
 export type InlineContentToken =
   | { kind: 'text'; text: string }
   | { kind: 'bold'; text: string }
@@ -6,6 +8,7 @@ export type InlineContentToken =
   | { kind: 'link'; text: string; href: string }
   | { kind: 'latex'; text: string }
   | { kind: 'documentReference'; text: string; occurrence: number }
+  | { kind: 'entityMention'; text: string; occurrence: number }
 
 function isHttpUrl(value: string): boolean {
   return /^https?:\/\//i.test(value)
@@ -30,6 +33,7 @@ export function parseInlineNodeContent(text: string): InlineContentToken[] {
   const tokens: InlineContentToken[] = []
   let index = 0
   let documentReferenceOccurrence = 0
+  let entityMentionOccurrence = 0
 
   while (index < text.length) {
     const rest = text.slice(index)
@@ -55,6 +59,23 @@ export function parseInlineNodeContent(text: string): InlineContentToken[] {
       // 未闭合 wiki 引用按普通文本处理，并确保解析游标前进。
       pushText(tokens, '[[')
       index += 2
+      continue
+    }
+    const entityMention = matchEntityMentionAt(text, index)
+    if (entityMention) {
+      tokens.push({
+        kind: 'entityMention',
+        text: entityMention.mentionText,
+        occurrence: entityMentionOccurrence,
+      })
+      entityMentionOccurrence += 1
+      index += entityMention.length
+      continue
+    }
+    if (rest.startsWith('@')) {
+      // 邮箱或不合法 mention 中的 @ 保留为普通文本，并推进游标。
+      pushText(tokens, '@')
+      index += 1
       continue
     }
     const markdownLink = rest.match(/^\[([^\]]+)]\(([^)]+)\)/)
@@ -125,7 +146,7 @@ export function parseInlineNodeContent(text: string): InlineContentToken[] {
       continue
     }
 
-    const nextSpecial = rest.search(/(\[\[|\*\*|\*|`|\$|\[[^\]]+]\(|https?:\/\/)/i)
+    const nextSpecial = rest.search(/(\[\[|@|\*\*|\*|`|\$|\[[^\]]+]\(|https?:\/\/)/i)
     if (nextSpecial === -1) {
       pushText(tokens, rest)
       break

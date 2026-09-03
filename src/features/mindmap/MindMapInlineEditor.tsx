@@ -5,6 +5,9 @@ import { useDocumentStore } from '../document/documentStore'
 import { DocumentReferenceMenu } from '../references/DocumentReferenceMenu'
 import { useDocumentReferenceAutocomplete } from '../references/useDocumentReferenceAutocomplete'
 import type { LibraryDocumentItem } from '../../types/library'
+import { EntityMentionMenu } from '../mentions/EntityMentionMenu'
+import { useEntityMentionAutocomplete } from '../mentions/useEntityMentionAutocomplete'
+import type { EntityMentionTarget } from '../mentions/entityMentions'
 
 interface MindMapInlineEditorProps {
   nodeId: string
@@ -40,7 +43,9 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
   const inputRef = React.useRef<HTMLInputElement>(null)
   const currentDocumentId = useDocumentStore((state) => state.currentDoc?.id ?? null)
   const insertDocumentReference = useDocumentStore((state) => state.insertDocumentReference)
+  const insertEntityMention = useDocumentStore((state) => state.insertEntityMention)
   const referenceMenu = useDocumentReferenceAutocomplete(currentDocumentId)
+  const mentionMenu = useEntityMentionAutocomplete()
   const isComposingRef = React.useRef(false)
   const [isComposing, setIsComposing] = React.useState(false)
   const [draftValue, setDraftValue] = React.useState(value)
@@ -81,9 +86,33 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
     })
   }, [draftValue, insertDocumentReference, nodeId, referenceMenu])
 
+  const selectEntityMention = React.useCallback((item: EntityMentionTarget) => {
+    const query = mentionMenu.query
+    if (!query) return
+    if (!insertEntityMention(nodeId, query.start, query.end, item)) return
+
+    const syntax = `@${item.mentionText}`
+    const nextValue = `${draftValue.slice(0, query.start)}${syntax}${draftValue.slice(query.end)}`
+    const caret = query.start + syntax.length
+    setDraftValue(nextValue)
+    setLastCommittedValue(nextValue)
+    mentionMenu.close()
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(caret, caret)
+    })
+  }, [draftValue, insertEntityMention, mentionMenu, nodeId])
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation()
     if (isComposingRef.current) return
+
+    const mentionResult = mentionMenu.handleKeyDown(event)
+    if (mentionResult === 'handled') return
+    if (mentionResult) {
+      selectEntityMention(mentionResult)
+      return
+    }
 
     const referenceResult = referenceMenu.handleKeyDown(event)
     if (referenceResult === 'handled') return
@@ -155,7 +184,13 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
         onChange={(event) => {
           const nextValue = event.target.value
           setDraftValue(nextValue)
-          referenceMenu.update(nextValue, event.target.selectionStart ?? nextValue.length)
+          const caret = event.target.selectionStart ?? nextValue.length
+          const referenceQuery = referenceMenu.update(nextValue, caret)
+          if (referenceQuery) {
+            mentionMenu.close()
+          } else {
+            mentionMenu.update(nextValue, caret)
+          }
           if (!isComposingRef.current) {
             onChange(nextValue)
             setLastCommittedValue(nextValue)
@@ -171,7 +206,13 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
           isComposingRef.current = false
           setIsComposing(false)
           setDraftValue(committedValue)
-          referenceMenu.update(committedValue, event.currentTarget.selectionStart ?? committedValue.length)
+          const caret = event.currentTarget.selectionStart ?? committedValue.length
+          const referenceQuery = referenceMenu.update(committedValue, caret)
+          if (referenceQuery) {
+            mentionMenu.close()
+          } else {
+            mentionMenu.update(committedValue, caret)
+          }
           onChange(committedValue)
           setLastCommittedValue(committedValue)
         }}
@@ -186,6 +227,13 @@ export const MindMapInlineEditor: React.FC<MindMapInlineEditorProps> = ({
           activeIndex={referenceMenu.activeIndex}
           isLoading={referenceMenu.isLoading}
           onSelect={selectDocumentReference}
+        />
+      )}
+      {mentionMenu.query && (
+        <EntityMentionMenu
+          items={mentionMenu.items}
+          activeIndex={mentionMenu.activeIndex}
+          onSelect={selectEntityMention}
         />
       )}
     </div>

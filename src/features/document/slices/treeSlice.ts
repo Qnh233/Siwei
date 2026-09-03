@@ -9,6 +9,7 @@ type TreeActions = Pick<
   DocumentState,
   | 'updateNodeText'
   | 'insertDocumentReference'
+  | 'insertEntityMention'
   | 'toggleCollapse'
   | 'indentNode'
   | 'outdentNode'

@@ -7,6 +7,7 @@ export interface OutlineDocument {
   mindMapLayout?: MindMapLayoutState
   relations?: NodeRelation[]
   documentReferences?: DocumentReference[]
+  entityMentions?: EntityMention[]
   root: OutlineNode
 }
 
@@ -16,6 +17,20 @@ export interface DocumentReference {
   sourceOccurrence: number
   targetDocumentId: string
   targetPath: string
+  label: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type EntityMentionKind = 'agent' | (string & {})
+
+export interface EntityMention {
+  id: string
+  sourceNodeId: string
+  sourceOccurrence: number
+  kind: EntityMentionKind
+  targetId: string
+  mentionText: string
   label: string
   createdAt: number
   updatedAt: number

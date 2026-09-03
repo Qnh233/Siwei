@@ -8,11 +8,18 @@ import {
   insertDocumentReferenceText,
   reconcileDocumentReferences,
 } from '../../references/documentReferences'
+import {
+  insertEntityMentionText,
+  reconcileEntityMentions,
+} from '../../mentions/entityMentions'
 import { createSnapshot } from '../documentStoreHelpers'
 import type { DocumentStoreContext } from '../documentStoreContext'
 import type { DocumentState } from '../documentStoreTypes'
 
-type TreeTextActions = Pick<DocumentState, 'updateNodeText' | 'insertDocumentReference' | 'toggleCollapse'>
+type TreeTextActions = Pick<
+  DocumentState,
+  'updateNodeText' | 'insertDocumentReference' | 'insertEntityMention' | 'toggleCollapse'
+>
 
 export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActions {
   const { get, set, beginMutation, setHistoryAfterMutation } = context
@@ -35,12 +42,18 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
           ...(currentDoc.documentReferences ?? []).filter((reference) => reference.sourceNodeId !== nodeId),
           ...nodeReferences,
         ]
+        const nodeMentions = reconcileEntityMentions(text, currentDoc.entityMentions, nodeId)
+        const entityMentions = [
+          ...(currentDoc.entityMentions ?? []).filter((mention) => mention.sourceNodeId !== nodeId),
+          ...nodeMentions,
+        ]
 
         const updatedDoc = {
           ...currentDoc,
           title: text,
           updatedAt: now,
           documentReferences,
+          entityMentions,
           root: {
             ...currentDoc.root,
             text,
@@ -76,6 +89,11 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
         ...(currentDoc.documentReferences ?? []).filter((reference) => reference.sourceNodeId !== nodeId),
         ...nodeReferences,
       ]
+      const nodeMentions = reconcileEntityMentions(text, currentDoc.entityMentions, nodeId)
+      const entityMentions = [
+        ...(currentDoc.entityMentions ?? []).filter((mention) => mention.sourceNodeId !== nodeId),
+        ...nodeMentions,
+      ]
 
       const newRoot = updateNodeAtPath(currentDoc.root, path, (node) => ({
         ...node,
@@ -87,6 +105,7 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
         ...currentDoc,
         root: newRoot,
         documentReferences,
+        entityMentions,
         updatedAt: now,
       }
 
@@ -156,6 +175,60 @@ export function createTreeTextSlice(context: DocumentStoreContext): TreeTextActi
       }))
       if (before) setHistoryAfterMutation(before)
       return referenceId
+    },
+
+    insertEntityMention: (nodeId, rangeStart, rangeEnd, target) => {
+      const { currentDoc } = get()
+      if (!currentDoc) return null
+      const path = currentDoc.root.id === nodeId ? [] : findPath(currentDoc.root, nodeId)
+      if (path === null) return null
+
+      let currentNode = currentDoc.root
+      for (const index of path) currentNode = currentNode.children[index]
+
+      const now = Date.now()
+      const mentionId = generateId()
+      const nodeMentions = (currentDoc.entityMentions ?? []).filter(
+        (mention) => mention.sourceNodeId === nodeId,
+      )
+      const inserted = insertEntityMentionText({
+        text: currentNode.text,
+        mentions: nodeMentions,
+        sourceNodeId: nodeId,
+        rangeStart,
+        rangeEnd,
+        target,
+        now,
+        id: mentionId,
+      })
+      const before = get().activeTextEditSession?.nodeId === nodeId ? null : beginMutation()
+      const nextRoot = path.length === 0
+        ? { ...currentDoc.root, text: inserted.text, updatedAt: now }
+        : updateNodeAtPath(currentDoc.root, path, (node) => ({ ...node, text: inserted.text, updatedAt: now }))
+      const updatedDoc = {
+        ...currentDoc,
+        title: path.length === 0 ? inserted.text : currentDoc.title,
+        root: nextRoot,
+        entityMentions: [
+          ...(currentDoc.entityMentions ?? []).filter((mention) => mention.sourceNodeId !== nodeId),
+          ...inserted.mentions,
+        ],
+        updatedAt: now,
+      }
+
+      set((state) => ({
+        currentDoc: updatedDoc,
+        isDirty: state.cleanSnapshotKey === null
+          ? true
+          : createSnapshot(updatedDoc, state.selectedNodeId, state.collapsedNodeIds).key !== state.cleanSnapshotKey,
+        activeTextEditSession: state.activeTextEditSession?.nodeId === nodeId
+          ? { ...state.activeTextEditSession, didChange: true }
+          : state.activeTextEditSession,
+        canUndo: state.activeTextEditSession?.nodeId === nodeId ? true : state.canUndo,
+        canRedo: state.activeTextEditSession?.nodeId === nodeId ? false : state.canRedo,
+      }))
+      if (before) setHistoryAfterMutation(before)
+      return mentionId
     },
 
     toggleCollapse: (nodeId) => {

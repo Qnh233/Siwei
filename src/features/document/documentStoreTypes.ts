@@ -84,6 +84,12 @@ export interface DocumentState {
     rangeEnd: number,
     target: { documentId: string; title: string; path: string },
   ) => string | null
+  insertEntityMention: (
+    nodeId: string,
+    rangeStart: number,
+    rangeEnd: number,
+    target: { kind: string; id: string; label: string; mentionText: string },
+  ) => string | null
   toggleCollapse: (nodeId: string) => void
   indentNode: (nodeId: string) => void
   outdentNode: (nodeId: string) => void

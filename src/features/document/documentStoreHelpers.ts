@@ -3,6 +3,7 @@ import type { OutlineDocument, OutlineNode } from '../../types/document'
 import { pruneMindMapLayoutState } from '../mindmap/mindMapLayoutState'
 import { pruneNodeRelations } from './nodeRelations'
 import { pruneDocumentReferences } from '../references/documentReferences'
+import { pruneEntityMentions } from '../mentions/entityMentions'
 import type { HistorySnapshot } from './documentStoreTypes'
 
 export function cloneDocument(doc: OutlineDocument): OutlineDocument {
@@ -60,18 +61,22 @@ export function getDocumentWithVersionForSave(doc: OutlineDocument): OutlineDocu
   const mindMapLayout = pruneMindMapLayoutState(doc.mindMapLayout, doc.root)
   const relations = pruneNodeRelations(doc.relations, doc.root)
   const documentReferences = pruneDocumentReferences(doc.documentReferences, doc.root)
-  const version = documentReferences?.length
-    ? Math.max(doc.version, 4)
-    : relations?.length
-      ? Math.max(doc.version, 3)
-      : mindMapLayout
-        ? Math.max(doc.version, 2)
-        : doc.version
+  const entityMentions = pruneEntityMentions(doc.entityMentions, doc.root)
+  const version = entityMentions?.length
+    ? Math.max(doc.version, 5)
+    : documentReferences?.length
+      ? Math.max(doc.version, 4)
+      : relations?.length
+        ? Math.max(doc.version, 3)
+        : mindMapLayout
+          ? Math.max(doc.version, 2)
+          : doc.version
   return {
     ...doc,
     mindMapLayout,
     relations,
     documentReferences,
+    entityMentions,
     version,
   }
 }
