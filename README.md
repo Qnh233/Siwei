@@ -104,6 +104,10 @@ pnpm test:e2e
 pnpm tauri
 ```
 
+## 持续集成
+
+仓库通过 GitHub Actions 在每次 `push`、Pull Request 和手动触发时运行 CI。前端任务会执行依赖安装、`pnpm test` 和 `pnpm build`；Rust 任务在 Windows runner 上执行 `cargo test --manifest-path src-tauri/Cargo.toml --locked`。Node/pnpm 与 Cargo 构建缓存会在 GitHub Actions 中复用，以减少重复安装和编译时间。
+
 ## 使用说明
 
 1. 新建或打开一个 `.siwei.json` 文档。
