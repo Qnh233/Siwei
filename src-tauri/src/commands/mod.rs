@@ -37,6 +37,8 @@ pub fn handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sy
         library::query_library_tags,
         library::get_library_tasks,
         library::query_library_tasks,
+        library::get_document_backlinks,
+        library::query_library_graph,
         library::rebuild_library_index,
         library::start_library_refresh,
         library::get_library_refresh_status,

@@ -134,6 +134,51 @@ export interface LibraryTaskQuery {
   checked?: 'all' | 'checked' | 'unchecked'
 }
 
+export type LibraryGraphDirection = 'incoming' | 'outgoing' | 'both'
+
+export interface LibraryGraphQuery {
+  documentId: string
+  direction?: LibraryGraphDirection
+}
+
+export interface LibraryGraphNode {
+  documentId: string
+  title: string
+  path: string
+  status?: LibraryDocumentStatus
+}
+
+export interface LibraryGraphEdge {
+  referenceId: string
+  sourceDocumentId: string
+  sourceNodeId: string
+  sourceOccurrence: number
+  targetDocumentId: string
+  targetPath: string
+  label: string
+}
+
+export interface LibraryGraphResult {
+  rootDocumentId: string
+  nodes: LibraryGraphNode[]
+  edges: LibraryGraphEdge[]
+}
+
+export interface LibraryBacklinkItem {
+  referenceId: string
+  sourceDocumentId: string
+  sourceDocumentTitle: string
+  sourceDocumentPath: string
+  sourceDocumentStatus: LibraryDocumentStatus
+  sourceNodeId: string
+  sourceNodeText: string
+  sourceNodePath: string[]
+  sourceOccurrence: number
+  targetDocumentId: string
+  targetPath: string
+  label: string
+}
+
 export type LibraryRefreshJobStatus =
   | 'queued'
   | 'running'

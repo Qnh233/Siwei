@@ -4,7 +4,7 @@ use crate::utils::error::AppResult;
 
 use super::codec::db_error;
 
-const SCHEMA_VERSION: u32 = 1;
+const SCHEMA_VERSION: u32 = 2;
 
 pub(crate) fn migrate_database(conn: &mut Connection) -> AppResult<()> {
     conn.pragma_update(None, "foreign_keys", "ON")
@@ -48,6 +48,25 @@ pub(crate) fn migrate_database(conn: &mut Connection) -> AppResult<()> {
           PRIMARY KEY (document_id, node_id, tag),
           FOREIGN KEY (document_id, node_id) REFERENCES library_nodes(document_id, node_id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS library_document_references (
+          reference_id TEXT PRIMARY KEY,
+          source_document_id TEXT NOT NULL,
+          source_node_id TEXT NOT NULL,
+          source_occurrence INTEGER NOT NULL,
+          target_document_id TEXT NOT NULL,
+          target_path TEXT NOT NULL,
+          label TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (source_document_id) REFERENCES library_documents(document_id) ON DELETE CASCADE,
+          FOREIGN KEY (source_document_id, source_node_id) REFERENCES library_nodes(document_id, node_id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_library_document_references_source
+          ON library_document_references(source_document_id);
+        CREATE INDEX IF NOT EXISTS idx_library_document_references_target
+          ON library_document_references(target_document_id);
 
         CREATE VIRTUAL TABLE IF NOT EXISTS library_search_fts USING fts5(
           document_id UNINDEXED,
