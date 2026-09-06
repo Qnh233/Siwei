@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type WorkspaceView = 'editor' | 'library' | 'settings'
+export type WorkspaceView = 'editor' | 'library' | 'graph' | 'settings'
 export type ActiveSurface = 'outline' | 'mindmap' | null
 export type NodeRevealSource = 'outline' | 'mindmap' | 'external'
 
