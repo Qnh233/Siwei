@@ -5,6 +5,8 @@ import { DEFAULT_SETTINGS } from '../types/settings'
 import type {
   LibraryDocumentItem,
   LibraryDocumentQuery,
+  LibraryGraphQuery,
+  LibraryGraphResult,
   LibraryPage,
   LibraryRefreshStatus,
   LibrarySearchResult,
@@ -226,6 +228,17 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
         items: [],
       }))
       return page(tags, query) as T
+    }
+    case 'get_document_backlinks':
+      return [] as T
+    case 'query_library_graph': {
+      const query = args?.query as LibraryGraphQuery | undefined
+      const result: LibraryGraphResult = {
+        rootDocumentId: query?.documentId ?? '',
+        nodes: [],
+        edges: [],
+      }
+      return result as T
     }
     case 'get_library_tasks':
       return collectTasks(currentDoc.root).map<LibraryTaskSummary>((task) => ({

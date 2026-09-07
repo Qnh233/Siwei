@@ -158,6 +158,11 @@ pub(crate) fn write_document_index(
     .map_err(db_error)?;
 
     tx.execute(
+        "DELETE FROM library_document_references WHERE source_document_id = ?1",
+        params![doc.id],
+    )
+    .map_err(db_error)?;
+    tx.execute(
         "DELETE FROM library_nodes WHERE document_id = ?1",
         params![doc.id],
     )
@@ -221,6 +226,27 @@ pub(crate) fn write_document_index(
             )
             .map_err(db_error)?;
         }
+    }
+
+    for reference in &doc.document_references {
+        tx.execute(
+            "INSERT INTO library_document_references (
+                reference_id, source_document_id, source_node_id, source_occurrence,
+                target_document_id, target_path, label, created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                reference.id,
+                doc.id,
+                reference.source_node_id,
+                reference.source_occurrence,
+                reference.target_document_id,
+                reference.target_path,
+                reference.label,
+                reference.created_at,
+                reference.updated_at,
+            ],
+        )
+        .map_err(db_error)?;
     }
 
     Ok(())

@@ -11,6 +11,7 @@ import { useAgentStore } from '../features/agent/agentStore'
 import { useDocumentStore } from '../features/document/documentStore'
 import { summarizeTaskCompletion } from '../features/filter/filterUtils'
 import { LibraryWorkspace } from '../features/library/LibraryWorkspace'
+import { KnowledgeGraphWorkspace } from '../features/knowledgeGraph/KnowledgeGraphWorkspace'
 import { mindMapExportController } from '../features/mindmap/mindMapExportController'
 import { MindMapView } from '../features/mindmap/MindMapView'
 import { OutlineEditor } from '../features/outline/OutlineEditor'
@@ -61,6 +62,7 @@ export const App: React.FC = () => {
   const settings = useSettingsStore((s) => s.settings)
   const updateSettings = useSettingsStore((s) => s.updateSettings)
   const activeWorkspaceView = useWorkspaceStore((s) => s.activeView)
+  const setWorkspaceView = useWorkspaceStore((s) => s.setActiveView)
   const isAgentOpen = useAgentStore((s) => s.isOpen)
   const setAgentOpen = useAgentStore((s) => s.setOpen)
 
@@ -131,6 +133,11 @@ export const App: React.FC = () => {
     setIsPresentationOpen(true)
   }
 
+  const handleToggleKnowledgeGraph = () => {
+    if (!currentDoc) return
+    setWorkspaceView(activeWorkspaceView === 'graph' ? 'editor' : 'graph')
+  }
+
   const handleNewDoc = () => {
     if (!canDiscardCurrentDoc()) return
 
@@ -153,12 +160,15 @@ export const App: React.FC = () => {
             canUndo={canUndo}
             canRedo={canRedo}
             isAgentOpen={isAgentOpen}
+            isKnowledgeGraphOpen={activeWorkspaceView === 'graph'}
+            canOpenKnowledgeGraph={Boolean(currentDoc)}
             taskSummaryLabel={taskSummaryLabel}
             onViewModeChange={setViewMode}
             onUndo={undo}
             onRedo={redo}
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenCommand={() => setIsCommandOpen(true)}
+            onToggleKnowledgeGraph={handleToggleKnowledgeGraph}
             onToggleAgent={() => setAgentOpen(!isAgentOpen)}
             onOpenImport={() => setIsImportOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
@@ -172,7 +182,11 @@ export const App: React.FC = () => {
           <div className="flex h-full w-full overflow-hidden">
             <div className="relative min-w-0 flex-1 overflow-hidden">
               <AnimatePresence mode="wait">
-                {activeWorkspaceView === 'library' ? (
+                {activeWorkspaceView === 'graph' ? (
+                  <motion.div key="graph" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="absolute inset-0 h-full w-full">
+                    <KnowledgeGraphWorkspace />
+                  </motion.div>
+                ) : activeWorkspaceView === 'library' ? (
                   <motion.div key="library" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="absolute inset-0 h-full w-full">
                     <LibraryWorkspace />
                   </motion.div>

@@ -3,6 +3,7 @@ import {
   Command as CommandIcon,
   FileInput,
   FileOutput,
+  Network,
   Presentation,
   Redo2,
   Save,
@@ -24,12 +25,15 @@ interface AppHeaderProps {
   canUndo: boolean
   canRedo: boolean
   isAgentOpen: boolean
+  isKnowledgeGraphOpen: boolean
+  canOpenKnowledgeGraph: boolean
   taskSummaryLabel?: string | null
   onViewModeChange: (viewMode: ViewMode) => void
   onUndo: () => void
   onRedo: () => void
   onOpenSearch: () => void
   onOpenCommand: () => void
+  onToggleKnowledgeGraph: () => void
   onToggleAgent: () => void
   onOpenImport: () => void
   onOpenExport: () => void
@@ -43,12 +47,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   canUndo,
   canRedo,
   isAgentOpen,
+  isKnowledgeGraphOpen,
+  canOpenKnowledgeGraph,
   taskSummaryLabel,
   onViewModeChange,
   onUndo,
   onRedo,
   onOpenSearch,
   onOpenCommand,
+  onToggleKnowledgeGraph,
   onToggleAgent,
   onOpenImport,
   onOpenExport,
@@ -134,6 +141,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           title={shortcutTitle('命令面板', 'app.commandPalette')}
         >
           <CommandIcon size={15} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleKnowledgeGraph}
+          disabled={!canOpenKnowledgeGraph}
+          className={`btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-35 ${
+            isKnowledgeGraphOpen ? 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900' : ''
+          }`}
+          title="当前文档关系"
+          aria-label="当前文档关系"
+        >
+          <Network size={15} />
         </button>
 
         <button

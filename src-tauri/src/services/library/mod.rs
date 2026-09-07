@@ -1,6 +1,7 @@
 pub mod aggregator;
 pub mod codec;
 pub mod document_mapper;
+pub mod graph;
 pub mod indexer;
 pub mod migration;
 pub mod models;

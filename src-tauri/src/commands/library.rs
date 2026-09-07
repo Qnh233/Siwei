@@ -2,9 +2,10 @@ use tauri::Manager;
 
 use crate::{
     models::{
-        LibraryDocumentItem, LibraryDocumentQuery, LibraryPage, LibraryRefreshStatus,
-        LibrarySearchQuery, LibrarySearchResult, LibraryTagQuery, LibraryTagSummary,
-        LibraryTaskQuery, LibraryTaskSummary,
+        LibraryBacklinkItem, LibraryDocumentItem, LibraryDocumentQuery, LibraryGraphQuery,
+        LibraryGraphResult, LibraryPage, LibraryRefreshStatus, LibrarySearchQuery,
+        LibrarySearchResult, LibraryTagQuery, LibraryTagSummary, LibraryTaskQuery,
+        LibraryTaskSummary,
     },
     services::library_service,
     utils::error::{AppError, CommandResult},
@@ -99,6 +100,26 @@ pub fn query_library_tags(
 pub fn get_library_tasks(app: tauri::AppHandle) -> Result<Vec<LibraryTaskSummary>, String> {
     app_data_dir(&app)
         .and_then(|dir| library_service::get_library_tasks(&dir))
+        .into_command_result()
+}
+
+#[tauri::command]
+pub fn get_document_backlinks(
+    app: tauri::AppHandle,
+    document_id: String,
+) -> Result<Vec<LibraryBacklinkItem>, String> {
+    app_data_dir(&app)
+        .and_then(|dir| library_service::get_document_backlinks(&dir, &document_id))
+        .into_command_result()
+}
+
+#[tauri::command]
+pub fn query_library_graph(
+    app: tauri::AppHandle,
+    query: LibraryGraphQuery,
+) -> Result<LibraryGraphResult, String> {
+    app_data_dir(&app)
+        .and_then(|dir| library_service::query_library_graph(&dir, query))
         .into_command_result()
 }
 

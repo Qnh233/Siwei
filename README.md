@@ -38,7 +38,7 @@ Siwei 是一个本地优先的桌面知识整理工具，用大纲、思维导�
 - 本地优先存储：使用 `.siwei.json` 保存完整文档树，保存时生成 `.bak` 备份。
 - 导入导出：支持 `.siwei.json`、Markdown、OPML、交互式 HTML 分享包和纯文本，导入前可预览并选择作为新文档打开或追加到当前文档。
 - 文档库：新建文档会自动保存到可配置的默认文档库目录并建立索引，支持刷新索引、全文检索、标签汇总和待办汇总；普通保存直接写回当前文件，另存为才选择新位置。
-- 文档引用：在节点中输入 `[[` 可从文档库补全并插入 `[[文档名]]` 内部引用；引用保存稳定文档 ID，点击可直接切换到目标文档，目标文件移动后会尝试通过文档库重新定位。
+- 文档引用与探索型知识图谱：在节点中输入 `[[` 可从文档库补全并插入 `[[文档名]]` 内部引用；引用保存稳定文档 ID，点击可直接切换到目标文档，目标文件移动后会尝试通过文档库重新定位。文档库会把这些引用同步为可重建的 SQLite 派生索引；顶部“当前文档图谱”入口提供 1–3 跳局部探索，并可在双向 / 入链 / 出链之间切换。图谱采用可拖拽力导向布局，以圆点和标题呈现节点，按跳数渐进生长，悬停会突出直接邻居；点击文档节点会打开该文档并以它作为新的探索中心，Backlinks 面板可按需展开。
 - 实体提及：在节点中输入 `@` 可从本地实体注册表补全；当前基础版本提供 `@SiweiAgent`，显示为 “Siwei Agent”，并保存稳定的实体类型、目标 ID 与出现位置。点击已解析的 Agent 提及会打开 Agent 面板；底层模型保持通用，后续可扩展其他本地 Agent、工具或实体。
 - 文档助手：内嵌 Rust Agent Runtime，支持 OpenAI-compatible API 与 Claude API，AI 建议以预览和确认写入为边界。
 - 测试 fallback：在没有 Tauri runtime 的浏览器测试环境中提供最小前端 fallback，便于覆盖首屏和关键交互。
@@ -118,7 +118,7 @@ pnpm tauri
 
 ## 数据与隐私
 
-Siwei 默认围绕本地文件工作。主文档格式是 `.siwei.json`，最近文档、应用设置和文档库索引保存在 Tauri `appDataDir` 下。
+Siwei 默认围绕本地文件工作。主文档格式是 `.siwei.json`，最近文档、应用设置和文档库索引保存在 Tauri `appDataDir` 下。文档引用关系也会被写入本地 SQLite 的派生索引；`.siwei.json` 始终是引用关系的真相源，SQLite 索引可通过刷新或重建恢复，不承担第二份持久化真相。
 
 文档助手能力需要用户自行配置 OpenAI-compatible API 或 Claude API。启用相关能力时，请确认你的模型服务提供方如何处理输入内容；Siwei 只在用户触发助手能力时把必要上下文交给已配置的服务。
 
@@ -169,7 +169,7 @@ React UI
   -> 本地文件 / SQLite 索引 / 内嵌 Agent Runtime
 ```
 
-前端通过 `src/services/siweiApi.ts` 统一调用 Tauri commands。浏览器测试环境没有 Tauri runtime 时，`browserInvokeFallback.ts` 提供最小 fallback。
+前端通过 `src/services/siweiApi.ts` 统一调用 Tauri commands。浏览器测试环境没有 Tauri runtime 时，`browserInvokeFallback.ts` 提供最小 fallback。当前文档关系视图复用 React Flow 与 Dagre，只查询当前文档的一跳 incoming / outgoing 关系；图节点位置仅用于本次查看，不写回文档布局，也不等同于思维导图中的节点关系线。
 
 后端按 command、model、service、utils 分层。command 负责 IPC 边界，service 负责文档读写、Markdown 转换、文档库索引、设置持久化和 Agent Runtime 生命周期管理。
 

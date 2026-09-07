@@ -237,6 +237,71 @@ pub struct LibraryTaskQuery {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub enum LibraryGraphDirection {
+    Incoming,
+    Outgoing,
+    Both,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryGraphQuery {
+    pub document_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direction: Option<LibraryGraphDirection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub depth: Option<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryGraphNode {
+    pub document_id: String,
+    pub title: String,
+    pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<LibraryDocumentStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryGraphEdge {
+    pub reference_id: String,
+    pub source_document_id: String,
+    pub source_node_id: String,
+    pub source_occurrence: u32,
+    pub target_document_id: String,
+    pub target_path: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryGraphResult {
+    pub root_document_id: String,
+    pub nodes: Vec<LibraryGraphNode>,
+    pub edges: Vec<LibraryGraphEdge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryBacklinkItem {
+    pub reference_id: String,
+    pub source_document_id: String,
+    pub source_document_title: String,
+    pub source_document_path: String,
+    pub source_document_status: LibraryDocumentStatus,
+    pub source_node_id: String,
+    pub source_node_text: String,
+    pub source_node_path: Vec<String>,
+    pub source_occurrence: u32,
+    pub target_document_id: String,
+    pub target_path: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum LibraryRefreshJobStatus {
     Queued,
     Running,

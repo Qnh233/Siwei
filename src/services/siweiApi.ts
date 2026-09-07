@@ -11,8 +11,11 @@ import type {
 import type { AppSettings } from '../types/settings'
 import type { AgentDocumentContext, AgentStatus } from '../features/agent/agentTypes'
 import type {
+  LibraryBacklinkItem,
   LibraryDocumentItem,
   LibraryDocumentQuery,
+  LibraryGraphQuery,
+  LibraryGraphResult,
   LibraryPage,
   LibraryRefreshStatus,
   LibrarySearchQuery,
@@ -225,6 +228,14 @@ export function queryLibraryTags(
 
 export function getLibraryTasks(): Promise<LibraryTaskSummary[]> {
   return callCommand('get_library_tasks')
+}
+
+export function getDocumentBacklinks(documentId: string): Promise<LibraryBacklinkItem[]> {
+  return callCommand('get_document_backlinks', { documentId })
+}
+
+export function queryLibraryGraph(query: LibraryGraphQuery): Promise<LibraryGraphResult> {
+  return callCommand('query_library_graph', { query })
 }
 
 export function queryLibraryTasks(

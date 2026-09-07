@@ -15,5 +15,9 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 1420,
     strictPort: true,
+    watch: {
+      // Rust 在 dev 模式下会持续重写 target 内的可执行文件；Windows 对这些文件加锁时会让 chokidar 报 EBUSY。
+      ignored: ['**/src-tauri/target/**'],
+    },
   },
 })
