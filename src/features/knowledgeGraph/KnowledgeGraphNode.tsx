@@ -1,37 +1,44 @@
-import { FileText } from 'lucide-react'
 import { Handle, Position, type NodeProps } from 'reactflow'
 import type { KnowledgeGraphNodeData } from './knowledgeGraphLayout'
 
 export function KnowledgeGraphNode({ data }: NodeProps<KnowledgeGraphNodeData>) {
-  const isUnavailable = !data.isRoot && !data.openable
+  const diameter = data.radius * 2
+  const missing = !data.openable && !data.isRoot
+  const dotClasses = missing
+    ? 'border-2 border-dashed border-slate-400 bg-transparent dark:border-zinc-600'
+    : data.isRoot
+      ? 'bg-indigo-500 ring-4 ring-indigo-100 dark:bg-indigo-400 dark:ring-indigo-500/20'
+      : data.highlighted
+        ? 'bg-indigo-500 ring-4 ring-indigo-100/80 dark:bg-indigo-400 dark:ring-indigo-500/20'
+        : 'bg-slate-500 dark:bg-zinc-500'
 
   return (
     <div
-      className={`w-[210px] rounded-xl border px-3.5 py-3 shadow-sm transition ${
-        data.isRoot
-          ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
-          : isUnavailable
-            ? 'border-dashed border-zinc-300 bg-white/55 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900/55 dark:text-zinc-500'
-            : 'border-zinc-200/80 bg-[#fffdf9] text-zinc-700 hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700'
-      }`}
+      className={`knowledge-graph-node-enter relative flex items-center justify-center transition-opacity duration-150 ${data.openable && !data.isRoot ? 'cursor-pointer' : 'cursor-grab'} ${data.dimmed ? 'opacity-20' : 'opacity-100'}`}
+      style={{ width: diameter, height: diameter }}
+      title={data.title}
     >
-      <Handle type="target" position={Position.Left} className="!h-2 !w-2 !border-0 !bg-zinc-400" />
-      <div className="flex items-start gap-2.5">
-        <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${data.isRoot ? 'bg-white/10 dark:bg-black/10' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
-          <FileText size={14} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-[13px] font-semibold">{data.title}</span>
-            {data.isRoot && <span className="shrink-0 rounded bg-white/15 px-1.5 py-0.5 text-[9px] font-medium dark:bg-black/10">当前</span>}
-            {!data.isRoot && data.status === undefined && (
-              <span className="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[9px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">未入库</span>
-            )}
-          </div>
-          <p className="mt-1 truncate text-[10px] opacity-60">{data.path || (data.isRoot ? '当前打开文档' : '目标路径不可用')}</p>
-        </div>
-      </div>
-      <Handle type="source" position={Position.Right} className="!h-2 !w-2 !border-0 !bg-zinc-400" />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!h-px !w-px !border-0 !bg-transparent !opacity-0"
+        style={{ left: '50%', top: '50%' }}
+      />
+      <div
+        className={`pointer-events-none absolute inset-0 rounded-full transition-[width,height,background-color,box-shadow] duration-200 ${dotClasses}`}
+      />
+      <span
+        className={`pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[12px] leading-none transition-colors duration-150 ${data.isRoot ? 'font-semibold text-slate-950 dark:text-zinc-100' : missing ? 'text-slate-400 dark:text-zinc-500' : data.highlighted ? 'font-medium text-slate-950 dark:text-zinc-100' : 'text-slate-600 dark:text-zinc-400'}`}
+        style={{ top: diameter + 8 }}
+      >
+        {data.title}
+      </span>
+      <Handle
+        type="source"
+        position={Position.Top}
+        className="!h-px !w-px !border-0 !bg-transparent !opacity-0"
+        style={{ left: '50%', top: '50%' }}
+      />
     </div>
   )
 }

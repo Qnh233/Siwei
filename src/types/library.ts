@@ -139,6 +139,7 @@ export type LibraryGraphDirection = 'incoming' | 'outgoing' | 'both'
 export interface LibraryGraphQuery {
   documentId: string
   direction?: LibraryGraphDirection
+  depth?: number
 }
 
 export interface LibraryGraphNode {

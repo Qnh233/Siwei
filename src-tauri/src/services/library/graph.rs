@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::{
     models::{
-        LibraryBacklinkItem, LibraryGraphDirection, LibraryGraphEdge,
-        LibraryGraphNode, LibraryGraphQuery, LibraryGraphResult,
+        LibraryBacklinkItem, LibraryGraphDirection, LibraryGraphEdge, LibraryGraphNode,
+        LibraryGraphQuery, LibraryGraphResult,
     },
     utils::error::{AppError, AppResult},
 };
@@ -69,7 +69,34 @@ pub(crate) fn query_graph(
     }
 
     let direction = query.direction.unwrap_or(LibraryGraphDirection::Both);
-    let edges = query_edges(conn, &document_id, direction)?;
+    let depth = query.depth.unwrap_or(1);
+    if !(1..=5).contains(&depth) {
+        return Err(AppError::Validation("depth 必须在 1 到 5 之间".to_string()));
+    }
+
+    let mut edge_map = BTreeMap::<String, LibraryGraphEdge>::new();
+    let mut visited = HashSet::from([document_id.clone()]);
+    let mut frontier = vec![document_id.clone()];
+
+    for _ in 0..depth {
+        let mut next_frontier = Vec::new();
+        for current_id in frontier {
+            for edge in query_edges(conn, &current_id, direction.clone())? {
+                for adjacent_id in [&edge.source_document_id, &edge.target_document_id] {
+                    if visited.insert(adjacent_id.clone()) {
+                        next_frontier.push(adjacent_id.clone());
+                    }
+                }
+                edge_map.entry(edge.reference_id.clone()).or_insert(edge);
+            }
+        }
+        if next_frontier.is_empty() {
+            break;
+        }
+        frontier = next_frontier;
+    }
+
+    let edges = edge_map.into_values().collect::<Vec<_>>();
     let mut nodes = BTreeMap::<String, LibraryGraphNode>::new();
 
     if let Some(root) = document_node(conn, &document_id)? {
@@ -110,9 +137,7 @@ fn query_edges(
     let predicate = match direction {
         LibraryGraphDirection::Incoming => "r.target_document_id = ?1",
         LibraryGraphDirection::Outgoing => "r.source_document_id = ?1",
-        LibraryGraphDirection::Both => {
-            "(r.source_document_id = ?1 OR r.target_document_id = ?1)"
-        }
+        LibraryGraphDirection::Both => "(r.source_document_id = ?1 OR r.target_document_id = ?1)",
     };
     let sql = format!(
         "SELECT r.reference_id, r.source_document_id, r.source_node_id,

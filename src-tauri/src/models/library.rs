@@ -249,6 +249,8 @@ pub struct LibraryGraphQuery {
     pub document_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub direction: Option<LibraryGraphDirection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub depth: Option<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

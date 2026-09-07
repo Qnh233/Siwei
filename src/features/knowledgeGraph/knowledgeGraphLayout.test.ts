@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LibraryGraphResult } from '../../types/library'
-import { buildKnowledgeGraphElements } from './knowledgeGraphLayout'
+import { buildKnowledgeGraphElements, computeKnowledgeGraphHops } from './knowledgeGraphLayout'
 
 const graphResult = (overrides: Partial<LibraryGraphResult> = {}): LibraryGraphResult => ({
   rootDocumentId: 'doc-source',
@@ -28,14 +28,45 @@ describe('buildKnowledgeGraphElements', () => {
 
     expect(result.nodes).toHaveLength(2)
     expect(result.edges).toMatchObject([
-      { id: 'ref-1', source: 'doc-source', target: 'doc-target', label: '目标' },
+      { id: 'ref-1', source: 'doc-source', target: 'doc-target', type: 'straight' },
     ])
-    expect(result.nodes.find((node) => node.id === 'doc-source')?.data.isRoot).toBe(true)
-    expect(result.nodes.find((node) => node.id === 'doc-target')?.data.openable).toBe(true)
+    expect(result.nodes.find((node) => node.id === 'doc-source')?.data).toMatchObject({ isRoot: true, hop: 0, degree: 1 })
+    expect(result.nodes.find((node) => node.id === 'doc-target')?.data).toMatchObject({ openable: true, hop: 1, degree: 1 })
+    expect(result.nodes.find((node) => node.id === 'doc-source')?.data.radius).toBeGreaterThan(
+      result.nodes.find((node) => node.id === 'doc-target')?.data.radius ?? 0,
+    )
     result.nodes.forEach((node) => {
       expect(Number.isFinite(node.position.x)).toBe(true)
       expect(Number.isFinite(node.position.y)).toBe(true)
     })
+  })
+
+  it('computes hop distance across multiple document references', () => {
+    const result = graphResult({
+      nodes: [
+        { documentId: 'doc-source', title: 'A', path: 'A.siwei.json', status: 'ready' },
+        { documentId: 'doc-target', title: 'B', path: 'B.siwei.json', status: 'ready' },
+        { documentId: 'doc-third', title: 'C', path: 'C.siwei.json', status: 'ready' },
+      ],
+      edges: [
+        ...graphResult().edges,
+        {
+          referenceId: 'ref-2',
+          sourceDocumentId: 'doc-target',
+          sourceNodeId: 'node-2',
+          sourceOccurrence: 0,
+          targetDocumentId: 'doc-third',
+          targetPath: 'C.siwei.json',
+          label: 'C',
+        },
+      ],
+    })
+
+    const hops = computeKnowledgeGraphHops(result)
+    expect(hops.get('doc-source')).toBe(0)
+    expect(hops.get('doc-target')).toBe(1)
+    expect(hops.get('doc-third')).toBe(2)
+    expect(buildKnowledgeGraphElements(result, 'A').nodes.find((node) => node.id === 'doc-third')?.data.hop).toBe(2)
   })
 
   it('keeps missing targets visible and synthesizes a root node when it is not indexed', () => {

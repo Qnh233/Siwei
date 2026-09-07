@@ -252,11 +252,11 @@ mod tests {
     use tempfile::tempdir;
 
     use crate::{
+        models::document::DocumentReference,
         models::{
             LibraryDocumentStatus, LibraryGraphDirection, LibraryGraphQuery,
             LibrarySearchMatchSource, OutlineDocument, OutlineNode,
         },
-        models::document::DocumentReference,
         services::{file_service, library_service},
     };
 
@@ -320,24 +320,108 @@ mod tests {
         source.version = 4;
         source.root.children[0].text = "参考 [[目标文档]]".to_string();
         source.document_references.push(DocumentReference {
-            id: "ref-1".into(), source_node_id: "task".into(), source_occurrence: 0,
-            target_document_id: "doc-target".into(), target_path: target_path.to_string_lossy().into(),
-            label: "目标文档".into(), created_at: 10, updated_at: 10,
+            id: "ref-1".into(),
+            source_node_id: "task".into(),
+            source_occurrence: 0,
+            target_document_id: "doc-target".into(),
+            target_path: target_path.to_string_lossy().into(),
+            label: "目标文档".into(),
+            created_at: 10,
+            updated_at: 10,
         });
         file_service::save_document(&source_path, &source).unwrap();
         file_service::save_document(&target_path, &sample_doc("doc-target", "目标文档")).unwrap();
         library_service::add_library_doc(app_dir.path(), &source_path).unwrap();
         library_service::add_library_doc(app_dir.path(), &target_path).unwrap();
-        let backlinks = library_service::get_document_backlinks(app_dir.path(), "doc-target").unwrap();
+        let backlinks =
+            library_service::get_document_backlinks(app_dir.path(), "doc-target").unwrap();
         assert_eq!(backlinks[0].source_node_text, "参考 [[目标文档]]");
-        let outgoing = library_service::query_library_graph(app_dir.path(), LibraryGraphQuery {
-            document_id: "doc-source".into(), direction: Some(LibraryGraphDirection::Outgoing),
-        }).unwrap();
+        let outgoing = library_service::query_library_graph(
+            app_dir.path(),
+            LibraryGraphQuery {
+                document_id: "doc-source".into(),
+                direction: Some(LibraryGraphDirection::Outgoing),
+                depth: None,
+            },
+        )
+        .unwrap();
         assert_eq!((outgoing.nodes.len(), outgoing.edges.len()), (2, 1));
-        let incoming = library_service::query_library_graph(app_dir.path(), LibraryGraphQuery {
-            document_id: "doc-target".into(), direction: Some(LibraryGraphDirection::Incoming),
-        }).unwrap();
+        let incoming = library_service::query_library_graph(
+            app_dir.path(),
+            LibraryGraphQuery {
+                document_id: "doc-target".into(),
+                direction: Some(LibraryGraphDirection::Incoming),
+                depth: None,
+            },
+        )
+        .unwrap();
         assert_eq!(incoming.edges, outgoing.edges);
+    }
+
+    #[test]
+    fn graph_query_expands_multiple_hops_without_duplicate_edges() {
+        let app_dir = tempdir().unwrap();
+        let a_path = app_dir.path().join("a.siwei.json");
+        let b_path = app_dir.path().join("b.siwei.json");
+        let c_path = app_dir.path().join("c.siwei.json");
+
+        let mut a = sample_doc("doc-a", "A");
+        a.version = 4;
+        a.document_references.push(DocumentReference {
+            id: "ref-a-b".into(),
+            source_node_id: "task".into(),
+            source_occurrence: 0,
+            target_document_id: "doc-b".into(),
+            target_path: b_path.to_string_lossy().into(),
+            label: "B".into(),
+            created_at: 10,
+            updated_at: 10,
+        });
+        let mut b = sample_doc("doc-b", "B");
+        b.version = 4;
+        b.document_references.push(DocumentReference {
+            id: "ref-b-c".into(),
+            source_node_id: "task".into(),
+            source_occurrence: 0,
+            target_document_id: "doc-c".into(),
+            target_path: c_path.to_string_lossy().into(),
+            label: "C".into(),
+            created_at: 10,
+            updated_at: 10,
+        });
+
+        file_service::save_document(&a_path, &a).unwrap();
+        file_service::save_document(&b_path, &b).unwrap();
+        file_service::save_document(&c_path, &sample_doc("doc-c", "C")).unwrap();
+        for path in [&a_path, &b_path, &c_path] {
+            library_service::add_library_doc(app_dir.path(), path).unwrap();
+        }
+
+        let one_hop = library_service::query_library_graph(
+            app_dir.path(),
+            LibraryGraphQuery {
+                document_id: "doc-a".into(),
+                direction: Some(LibraryGraphDirection::Outgoing),
+                depth: Some(1),
+            },
+        )
+        .unwrap();
+        assert_eq!((one_hop.nodes.len(), one_hop.edges.len()), (2, 1));
+
+        let two_hops = library_service::query_library_graph(
+            app_dir.path(),
+            LibraryGraphQuery {
+                document_id: "doc-a".into(),
+                direction: Some(LibraryGraphDirection::Outgoing),
+                depth: Some(2),
+            },
+        )
+        .unwrap();
+        assert_eq!((two_hops.nodes.len(), two_hops.edges.len()), (3, 2));
+        assert!(two_hops
+            .nodes
+            .iter()
+            .any(|node| node.document_id == "doc-c"));
     }
 
     #[test]
@@ -347,20 +431,44 @@ mod tests {
         let mut source = sample_doc("doc-source", "来源文档");
         source.version = 4;
         source.document_references.push(DocumentReference {
-            id: "ref-1".into(), source_node_id: "task".into(), source_occurrence: 0,
-            target_document_id: "doc-missing".into(), target_path: "missing.siwei.json".into(),
-            label: "未入库文档".into(), created_at: 10, updated_at: 10,
+            id: "ref-1".into(),
+            source_node_id: "task".into(),
+            source_occurrence: 0,
+            target_document_id: "doc-missing".into(),
+            target_path: "missing.siwei.json".into(),
+            label: "未入库文档".into(),
+            created_at: 10,
+            updated_at: 10,
         });
         file_service::save_document(&source_path, &source).unwrap();
         library_service::add_library_doc(app_dir.path(), &source_path).unwrap();
-        let graph = library_service::query_library_graph(app_dir.path(), LibraryGraphQuery {
-            document_id: "doc-source".into(), direction: Some(LibraryGraphDirection::Outgoing),
-        }).unwrap();
-        assert_eq!(graph.nodes.iter().find(|node| node.document_id == "doc-missing").unwrap().status, None);
+        let graph = library_service::query_library_graph(
+            app_dir.path(),
+            LibraryGraphQuery {
+                document_id: "doc-source".into(),
+                direction: Some(LibraryGraphDirection::Outgoing),
+                depth: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            graph
+                .nodes
+                .iter()
+                .find(|node| node.document_id == "doc-missing")
+                .unwrap()
+                .status,
+            None
+        );
         source.document_references.clear();
         file_service::save_document(&source_path, &source).unwrap();
-        library_service::refresh_library_doc(app_dir.path(), &source_path.to_string_lossy()).unwrap();
-        assert!(library_service::get_document_backlinks(app_dir.path(), "doc-missing").unwrap().is_empty());
+        library_service::refresh_library_doc(app_dir.path(), &source_path.to_string_lossy())
+            .unwrap();
+        assert!(
+            library_service::get_document_backlinks(app_dir.path(), "doc-missing")
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

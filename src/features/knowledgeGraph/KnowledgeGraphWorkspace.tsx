@@ -4,16 +4,9 @@ import {
   ExternalLink,
   Link2,
   Network,
+  PanelLeftOpen,
   RefreshCw,
 } from 'lucide-react'
-import ReactFlow, {
-  Background,
-  BackgroundVariant,
-  Controls,
-  MiniMap,
-  type Node,
-} from 'reactflow'
-import 'reactflow/dist/style.css'
 import { toast } from '../../components/common/Toast'
 import { useWorkspaceStore } from '../../app/workspaceStore'
 import { useDocumentStore } from '../document/documentStore'
@@ -24,13 +17,7 @@ import type {
   LibraryGraphDirection,
   LibraryGraphResult,
 } from '../../types/library'
-import { KnowledgeGraphNode } from './KnowledgeGraphNode'
-import {
-  buildKnowledgeGraphElements,
-  type KnowledgeGraphNodeData,
-} from './knowledgeGraphLayout'
-
-const nodeTypes = { knowledgeDocument: KnowledgeGraphNode }
+import { KnowledgeGraphExplorer } from './KnowledgeGraphExplorer'
 
 const directionOptions: Array<{ value: LibraryGraphDirection; label: string }> = [
   { value: 'both', label: '双向' },
@@ -42,10 +29,12 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
   const currentDoc = useDocumentStore((state) => state.currentDoc)
   const setWorkspaceView = useWorkspaceStore((state) => state.setActiveView)
   const [direction, setDirection] = React.useState<LibraryGraphDirection>('both')
+  const [depth, setDepth] = React.useState(2)
   const [backlinks, setBacklinks] = React.useState<LibraryBacklinkItem[]>([])
   const [graphResult, setGraphResult] = React.useState<LibraryGraphResult | null>(null)
   const [backlinksLoading, setBacklinksLoading] = React.useState(false)
   const [graphLoading, setGraphLoading] = React.useState(false)
+  const [showBacklinks, setShowBacklinks] = React.useState(false)
   const [reloadKey, setReloadKey] = React.useState(0)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -84,7 +73,7 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
     let cancelled = false
     setGraphLoading(true)
     setError(null)
-    void queryLibraryGraph({ documentId, direction })
+    void queryLibraryGraph({ documentId, direction, depth })
       .then((result) => {
         if (!cancelled) setGraphResult(result)
       })
@@ -98,14 +87,7 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [currentDoc?.id, direction, reloadKey])
-
-  const elements = React.useMemo(
-    () => graphResult && currentDoc
-      ? buildKnowledgeGraphElements(graphResult, currentDoc.title)
-      : { nodes: [], edges: [] },
-    [currentDoc, graphResult],
-  )
+  }, [currentDoc?.id, depth, direction, reloadKey])
 
   const handleOpenDocument = React.useCallback(async (
     documentId: string,
@@ -118,11 +100,6 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
       toast.error(`打开文档失败: ${String(reason)}`)
     }
   }, [])
-
-  const handleNodeClick = React.useCallback((_: React.MouseEvent, node: Node<KnowledgeGraphNodeData>) => {
-    if (node.data.isRoot || !node.data.openable) return
-    void handleOpenDocument(node.id, node.data.path)
-  }, [handleOpenDocument])
 
   if (!currentDoc) {
     return (
@@ -150,16 +127,43 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100">当前文档关系</h2>
+              <h2 className="truncate text-sm font-semibold text-zinc-800 dark:text-zinc-100">当前文档图谱</h2>
               <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                一跳
+                {depth} 跳
               </span>
             </div>
-            <p className="mt-0.5 truncate text-[11px] text-zinc-400">{currentDoc.title || '未命名文档'} · 保存后索引自动刷新</p>
+            <p className="mt-0.5 truncate text-[11px] text-zinc-400">{currentDoc.title || '未命名文档'}</p>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowBacklinks((value) => !value)}
+            className={`btn-patch-light flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] ${showBacklinks ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100' : ''}`}
+            title={showBacklinks ? '隐藏反向引用' : '显示反向引用'}
+            aria-pressed={showBacklinks}
+          >
+            <PanelLeftOpen size={13} />
+            反向引用
+          </button>
+          <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            {[1, 2, 3].map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setDepth(option)}
+                className={`rounded-md px-2.5 py-1.5 text-[11px] font-medium transition ${
+                  depth === option
+                    ? 'bg-indigo-500 text-white'
+                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200'
+                }`}
+                aria-pressed={depth === option}
+              >
+                {option} 跳
+              </button>
+            ))}
+          </div>
           <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             {directionOptions.map((option) => (
               <button
@@ -196,7 +200,8 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
       )}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[330px] shrink-0 flex-col border-r border-zinc-200/70 bg-white/55 dark:border-zinc-800 dark:bg-zinc-950/55">
+        {showBacklinks && (
+          <aside className="flex w-[330px] shrink-0 flex-col border-r border-zinc-200/70 bg-white/55 dark:border-zinc-800 dark:bg-zinc-950/55">
           <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/60 px-4 py-3 dark:border-zinc-800">
             <div className="flex items-center gap-2">
               <Link2 size={14} className="text-zinc-400" />
@@ -248,38 +253,20 @@ export const KnowledgeGraphWorkspace: React.FC = () => {
               </div>
             )}
           </div>
-        </aside>
+          </aside>
+        )}
 
         <div className="relative min-w-0 flex-1 bg-[#faf8f3] dark:bg-[#111111]">
           {graphLoading && !graphResult ? (
             <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">正在生成关系图…</div>
-          ) : elements.nodes.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-xs text-zinc-400">当前没有可显示的关系。</div>
-          ) : (
-            <ReactFlow
-              key={`${currentDoc.id}:${direction}:${reloadKey}:${elements.edges.length}`}
-              nodes={elements.nodes}
-              edges={elements.edges}
-              nodeTypes={nodeTypes}
-              onNodeClick={handleNodeClick}
-              fitView
-              fitViewOptions={{ padding: 0.22 }}
-              minZoom={0.25}
-              maxZoom={1.8}
-              nodesConnectable={false}
-              elementsSelectable
-              proOptions={{ hideAttribution: true }}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={22} size={1} />
-              <Controls showInteractive={false} className="!border-zinc-200 !bg-white/90 !shadow-sm dark:!border-zinc-800 dark:!bg-zinc-900/90" />
-              <MiniMap
-                pannable
-                zoomable
-                className="!border !border-zinc-200 !bg-white/85 dark:!border-zinc-800 dark:!bg-zinc-900/85"
-                nodeColor={(node) => (node.id === currentDoc.id ? '#27272a' : '#d4d4d8')}
-              />
-            </ReactFlow>
-          )}
+          ) : graphResult ? (
+            <KnowledgeGraphExplorer
+              key={`${currentDoc.id}:${direction}:${depth}:${reloadKey}`}
+              result={graphResult}
+              currentTitle={currentDoc.title}
+              onOpenDocument={(documentId, path) => void handleOpenDocument(documentId, path)}
+            />
+          ) : null}
         </div>
       </div>
     </section>
