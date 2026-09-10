@@ -60,6 +60,7 @@ describe('siweiApi', () => {
 
     await api.previewImportDocument('demo.opml', 'opml')
     await api.exportOpml('demo.opml', doc)
+    await api.exportFreemind('demo.mm', doc)
     await api.exportHtml('demo.html', doc)
     await api.exportPlainText('demo.txt', doc)
 
@@ -68,8 +69,9 @@ describe('siweiApi', () => {
       format: 'opml',
     })
     expect(invokeMock).toHaveBeenNthCalledWith(2, 'export_opml', { path: 'demo.opml', doc })
-    expect(invokeMock).toHaveBeenNthCalledWith(3, 'export_html', { path: 'demo.html', doc })
-    expect(invokeMock).toHaveBeenNthCalledWith(4, 'export_plain_text', { path: 'demo.txt', doc })
+    expect(invokeMock).toHaveBeenNthCalledWith(3, 'export_freemind', { path: 'demo.mm', doc })
+    expect(invokeMock).toHaveBeenNthCalledWith(4, 'export_html', { path: 'demo.html', doc })
+    expect(invokeMock).toHaveBeenNthCalledWith(5, 'export_plain_text', { path: 'demo.txt', doc })
   })
 
   it('returns enhanced search result contracts from the stable wrapper', async () => {

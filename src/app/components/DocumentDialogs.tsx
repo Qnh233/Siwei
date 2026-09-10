@@ -22,6 +22,11 @@ export const ImportDialog: React.FC<ImportDialogProps> = ({ isOpen, onClose, onI
         onClick={() => onImport('opml')}
       />
       <ImportOptionButton
+        title="导入 FreeMind (.mm)"
+        description="从 FreeMind、幕布等迁入思维导图树；外部图片路径会保留并提示"
+        onClick={() => onImport('freemind')}
+      />
+      <ImportOptionButton
         title="导入 Markdown (.md)"
         description="解析标题层级、缩进列表、任务、标签和备注"
         onClick={() => onImport('markdown')}
@@ -75,6 +80,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
       </p>
       <ExportOptionButton title="导出 JSON 备份 (.siwei.json)" description="完整备份大纲树结构，包含节点元数据" format="json" onExport={onExport} />
       <ExportOptionButton title="导出 OPML (.opml)" description="用于迁移到幕布及其他大纲工具" format="opml" onExport={onExport} />
+      <ExportOptionButton title="导出 FreeMind (.mm)" description="导出树结构、备注和折叠状态；图片与附件不会打包进 .mm" format="freemind" onExport={onExport} />
       <ExportOptionButton title="导出 Markdown (.md)" description="生成可迁移的大纲 Markdown 文件" format="markdown" onExport={onExport} />
       <ExportOptionButton title="导出 HTML 分享包 (.html)" description="生成离线可打开的大纲与导图只读分享包" format="html" onExport={onExport} />
       <ExportOptionButton title="导出纯文本 (.txt)" description="生成稳定缩进树，便于复制和审阅" format="text" onExport={onExport} />
@@ -155,8 +161,8 @@ export const ImportPreviewDialog: React.FC<ImportPreviewDialogProps> = ({
           <ImportModeOption
             icon={FileText}
             checked={mode === 'newDocument'}
-            title="作为新的未保存文档打开"
-            description="当前编辑区会切换到导入结果"
+            title="作为新文档导入"
+            description="保存到文档库并切换到导入结果"
             onChange={() => setMode('newDocument')}
           />
           <ImportModeOption

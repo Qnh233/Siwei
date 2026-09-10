@@ -66,6 +66,7 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
     case 'export_markdown':
     case 'export_json':
     case 'export_opml':
+    case 'export_freemind':
     case 'export_html':
     case 'export_plain_text':
       if (args?.doc) {
@@ -160,6 +161,8 @@ export async function browserInvokeFallback<T>(command: string, args?: CommandAr
       return undefined as T
     case 'get_library_docs':
     case 'refresh_library':
+    case 'list_library_directories':
+      return [] as T
     case 'rebuild_library_index':
       return libraryDocs as T
     case 'query_library_docs': {

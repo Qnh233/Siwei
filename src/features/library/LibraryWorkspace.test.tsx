@@ -10,6 +10,7 @@ import { LibraryWorkspace } from './LibraryWorkspace'
 vi.mock('../../services/siweiApi', () => ({
   openFileDialog: vi.fn(),
   openFileLocation: vi.fn(),
+  listLibraryDirectories: vi.fn(),
   queryLibraryDocs: vi.fn(),
   addLibraryDoc: vi.fn(),
   removeLibraryDoc: vi.fn(),
@@ -77,6 +78,7 @@ describe('LibraryWorkspace', () => {
     })
     useDocumentStore.setState({ saveStatus: 'idle' })
     apiMock.queryLibraryDocs.mockResolvedValue({ items: [failedDoc], hasMore: false, total: 1 })
+    apiMock.listLibraryDirectories.mockResolvedValue([])
   })
 
   it('shows a degraded open-location action for failed documents', async () => {

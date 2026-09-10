@@ -11,10 +11,11 @@ import {
 } from 'lucide-react'
 
 import { toast } from '../../components/common/Toast'
-import { openFileDialog, openFileLocation } from '../../services/siweiApi'
+import { listLibraryDirectories, openFileDialog, openFileLocation } from '../../services/siweiApi'
 import { useAsyncOperation } from '../../hooks/useAsyncOperation'
 import { useLibraryStore, type LibraryView } from './libraryStore'
 import { useDocumentStore } from '../document/documentStore'
+import { useSettingsStore } from '../settings/settingsStore'
 import { LibraryDocumentsView } from './views/LibraryDocumentsView'
 import { LibrarySearchView } from './views/LibrarySearchView'
 import { LibraryTagsView } from './views/LibraryTagsView'
@@ -43,6 +44,8 @@ export const LibraryWorkspace: React.FC = () => {
   const error = useLibraryStore((s) => s.error)
   const refreshStatus = useLibraryStore((s) => s.refreshStatus)
   const saveStatus = useDocumentStore((s) => s.saveStatus)
+  const libraryRoot = useSettingsStore((s) => s.settings.documentLibraryPath)
+  const [directoryPaths, setDirectoryPaths] = React.useState<string[]>([])
   const runAddDoc = useAsyncOperation({ errorPrefix: '加入失败' })
   const runRefresh = useAsyncOperation({ errorPrefix: '刷新失败' })
   const runCancelRefresh = useAsyncOperation({ errorPrefix: '取消失败' })
@@ -77,15 +80,30 @@ export const LibraryWorkspace: React.FC = () => {
   const toggleTask = useLibraryStore((s) => s.toggleTask)
   const openIndexedNode = useLibraryStore((s) => s.openIndexedNode)
 
+  const loadDirectoryPaths = React.useCallback(async () => {
+    if (!libraryRoot.trim()) {
+      setDirectoryPaths([])
+      return
+    }
+    try {
+      setDirectoryPaths(await listLibraryDirectories(libraryRoot))
+    } catch (error) {
+      console.error('Failed to list library directories:', error)
+      setDirectoryPaths([])
+    }
+  }, [libraryRoot])
+
   React.useEffect(() => {
     if (!activeView) return
     void loadDocs()
-  }, [activeView, loadDocs])
+    void loadDirectoryPaths()
+  }, [activeView, loadDirectoryPaths, loadDocs])
 
   React.useEffect(() => {
     if (!activeView || saveStatus !== 'saved') return
     void loadDocs()
-  }, [activeView, loadDocs, saveStatus])
+    void loadDirectoryPaths()
+  }, [activeView, loadDirectoryPaths, loadDocs, saveStatus])
 
   React.useEffect(() => {
     if (activeView === 'tags') void loadTags()
@@ -219,6 +237,8 @@ export const LibraryWorkspace: React.FC = () => {
         {currentView === 'docs' && (
           <LibraryDocumentsView
             docs={docs}
+            libraryRoot={libraryRoot}
+            directoryPaths={directoryPaths}
             hasMore={docsHasMore}
             statusFilter={docsStatusFilter}
             keyword={docsKeyword}
@@ -226,7 +246,10 @@ export const LibraryWorkspace: React.FC = () => {
             onStatusFilterChange={setDocsStatusFilter}
             onKeywordChange={setDocsKeyword}
             onSortByChange={setDocsSortBy}
-            onReload={() => void loadDocs()}
+            onReload={() => {
+              void loadDocs()
+              void loadDirectoryPaths()
+            }}
             onLoadMore={() => void loadMoreDocs()}
             onOpen={(doc) => void openIndexedNode(doc.path)}
             onRefresh={(doc) => void refreshDoc(doc.path)}

@@ -1,8 +1,8 @@
 use crate::{
     models::{ImportPreview, ImportReport, OutlineDocument},
     services::{
-        file_service, html_export, import_export_summary, markdown_export, markdown_parser,
-        opml_format, plain_text_export,
+        file_service, freemind_format, html_export, import_export_summary, markdown_export,
+        markdown_parser, opml_format, plain_text_export,
     },
     utils::error::CommandResult,
 };
@@ -44,6 +44,10 @@ pub fn preview_import_document(path: String, format: String) -> Result<ImportPre
             let (doc, report) = opml_format::import_opml(&content).into_command_result()?;
             Ok(import_export_summary::build_preview(doc, report))
         }
+        "freemind" => {
+            let (doc, report) = freemind_format::import_freemind(&content).into_command_result()?;
+            Ok(import_export_summary::build_preview(doc, report))
+        }
         _ => Err("unsupported import format".to_string()),
     }
 }
@@ -62,6 +66,13 @@ pub fn import_json(path: String) -> Result<OutlineDocument, String> {
 pub fn export_opml(path: String, doc: OutlineDocument) -> Result<(), String> {
     doc.validate().into_command_result()?;
     let content = opml_format::export_opml(&doc);
+    file_service::write_text(path, &content).into_command_result()
+}
+
+#[tauri::command]
+pub fn export_freemind(path: String, doc: OutlineDocument) -> Result<(), String> {
+    doc.validate().into_command_result()?;
+    let content = freemind_format::export_freemind(&doc);
     file_service::write_text(path, &content).into_command_result()
 }
 

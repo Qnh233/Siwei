@@ -99,8 +99,8 @@ export interface OutlineNode {
   children: OutlineNode[]
 }
 
-export type ImportFormat = 'json' | 'markdown' | 'opml'
-export type ExportFormat = 'json' | 'markdown' | 'opml' | 'html' | 'text'
+export type ImportFormat = 'json' | 'markdown' | 'opml' | 'freemind'
+export type ExportFormat = 'json' | 'markdown' | 'opml' | 'freemind' | 'html' | 'text'
 
 export interface ImportPreview {
   document: OutlineDocument

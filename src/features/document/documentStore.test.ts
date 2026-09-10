@@ -779,8 +779,11 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().canUndo).toBe(false)
   })
 
-  it('applies an import preview as a new unsaved document', async () => {
+  it('persists an imported new document into the default library when saved', async () => {
     const imported = createDocument()
+    apiMock.prepareNewDocumentPath.mockResolvedValueOnce('/Documents/Siwei/导入文档.siwei.json')
+    apiMock.saveDocument.mockResolvedValueOnce(undefined)
+    apiMock.addRecentDoc.mockResolvedValueOnce(undefined)
 
     useDocumentStore.getState().applyImportPreview({
       document: imported,
@@ -800,6 +803,15 @@ describe('documentStore', () => {
     expect(useDocumentStore.getState().currentFilePath).toBeNull()
     expect(useDocumentStore.getState().isDirty).toBe(true)
     expect(useDocumentStore.getState().canUndo).toBe(false)
+
+    const saved = await useDocumentStore.getState().saveDoc()
+
+    expect(saved).toBe(true)
+    expect(apiMock.prepareNewDocumentPath).toHaveBeenCalledWith(imported.title)
+    expect(apiMock.saveDocument).toHaveBeenCalledWith('/Documents/Siwei/导入文档.siwei.json', expect.any(Object))
+    expect(apiMock.refreshLibraryDoc).toHaveBeenCalledWith('/Documents/Siwei/导入文档.siwei.json')
+    expect(useDocumentStore.getState().currentFilePath).toBe('/Documents/Siwei/导入文档.siwei.json')
+    expect(useDocumentStore.getState().isDirty).toBe(false)
   })
 
   it('appends an import preview to the root as one undoable transaction', async () => {
