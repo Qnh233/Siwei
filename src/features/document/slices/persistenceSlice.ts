@@ -212,6 +212,9 @@ export function createPersistenceSlice(context: DocumentStoreContext): Persisten
         case 'opml':
           await api.exportOpml(path, docToExport)
           break
+        case 'freemind':
+          await api.exportFreemind(path, docToExport)
+          break
         case 'html':
           await api.exportHtml(path, docToExport)
           break

@@ -74,6 +74,10 @@ export function exportOpml(path: string, doc: OutlineDocument): Promise<void> {
   return callCommand('export_opml', { path, doc })
 }
 
+export function exportFreemind(path: string, doc: OutlineDocument): Promise<void> {
+  return callCommand('export_freemind', { path, doc })
+}
+
 export function exportHtml(path: string, doc: OutlineDocument): Promise<void> {
   return callCommand('export_html', { path, doc })
 }
@@ -88,6 +92,8 @@ export function extensionForExportFormat(format: ExportFormat): string {
       return 'md'
     case 'opml':
       return 'opml'
+    case 'freemind':
+      return 'mm'
     case 'html':
       return 'html'
     case 'text':
@@ -178,6 +184,10 @@ export function agentSaveApiKey(provider: string, apiKey: string): Promise<void>
 
 export function agentDeleteApiKey(provider: string): Promise<void> {
   return callCommand('agent_delete_api_key', { provider })
+}
+
+export function listLibraryDirectories(root: string): Promise<string[]> {
+  return callCommand('list_library_directories', { root })
 }
 
 export function getLibraryDocs(): Promise<LibraryDocumentItem[]> {

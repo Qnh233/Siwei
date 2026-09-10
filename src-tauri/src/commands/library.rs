@@ -7,9 +7,14 @@ use crate::{
         LibrarySearchResult, LibraryTagQuery, LibraryTagSummary, LibraryTaskQuery,
         LibraryTaskSummary,
     },
-    services::library_service,
+    services::{library_directories, library_service},
     utils::error::{AppError, CommandResult},
 };
+
+#[tauri::command]
+pub fn list_library_directories(root: String) -> Result<Vec<String>, String> {
+    library_directories::list_library_directories(root).into_command_result()
+}
 
 #[tauri::command]
 pub fn get_library_docs(app: tauri::AppHandle) -> Result<Vec<LibraryDocumentItem>, String> {

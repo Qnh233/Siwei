@@ -100,13 +100,24 @@ export const App: React.FC = () => {
     })
   }
 
-  const handleConfirmImport = (mode: ImportApplyMode) => {
+  const handleConfirmImport = async (mode: ImportApplyMode) => {
     if (!pendingImportPreview) return
     if (mode === 'newDocument' && !canDiscardCurrentDoc()) return
 
     applyImportPreview(pendingImportPreview, { mode })
-    toast.success('导入内容已应用')
     setPendingImportPreview(null)
+
+    if (mode === 'newDocument') {
+      const saved = await saveDoc()
+      if (saved) {
+        toast.success('已导入并保存到文档库')
+      } else {
+        toast.error('导入内容已打开，但保存到文档库失败')
+      }
+      return
+    }
+
+    toast.success('导入内容已应用')
   }
 
   const handleExport = async (format: ExportFormat) => {
@@ -298,6 +309,8 @@ function importFilters(format: ImportFormat): string[] {
       return ['md', 'markdown']
     case 'opml':
       return ['opml']
+    case 'freemind':
+      return ['mm']
     case 'json':
     default:
       return ['siwei.json', 'json']
@@ -310,6 +323,8 @@ function exportFormatLabel(format: ExportFormat): string {
       return 'Markdown'
     case 'opml':
       return 'OPML'
+    case 'freemind':
+      return 'FreeMind'
     case 'html':
       return 'HTML'
     case 'text':
