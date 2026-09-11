@@ -15,6 +15,7 @@ import { KnowledgeGraphWorkspace } from '../features/knowledgeGraph/KnowledgeGra
 import { mindMapExportController } from '../features/mindmap/mindMapExportController'
 import { MindMapView } from '../features/mindmap/MindMapView'
 import { OutlineEditor } from '../features/outline/OutlineEditor'
+import { RecallMode } from '../features/recall/RecallMode'
 import { SearchPanel } from '../features/search/SearchPanel'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { PresentationView } from '../features/presentation/PresentationView'
@@ -71,6 +72,7 @@ export const App: React.FC = () => {
   const [isExportOpen, setIsExportOpen] = React.useState(false)
   const [isCommandOpen, setIsCommandOpen] = React.useState(false)
   const [isPresentationOpen, setIsPresentationOpen] = React.useState(false)
+  const [isRecallOpen, setIsRecallOpen] = React.useState(false)
   const [pendingImportPreview, setPendingImportPreview] = React.useState<ImportPreview | null>(null)
   const runImport = useAsyncOperation({ errorPrefix: '导入失败' })
   const runExport = useAsyncOperation({ errorPrefix: '导出失败' })
@@ -173,6 +175,8 @@ export const App: React.FC = () => {
             isAgentOpen={isAgentOpen}
             isKnowledgeGraphOpen={activeWorkspaceView === 'graph'}
             canOpenKnowledgeGraph={Boolean(currentDoc)}
+            isRecallOpen={isRecallOpen}
+            canOpenRecall={Boolean(currentDoc)}
             taskSummaryLabel={taskSummaryLabel}
             onViewModeChange={setViewMode}
             onUndo={undo}
@@ -180,6 +184,7 @@ export const App: React.FC = () => {
             onOpenSearch={() => setIsSearchOpen(true)}
             onOpenCommand={() => setIsCommandOpen(true)}
             onToggleKnowledgeGraph={handleToggleKnowledgeGraph}
+            onToggleRecall={() => { setWorkspaceView('editor'); setIsRecallOpen((open) => !open) }}
             onToggleAgent={() => setAgentOpen(!isAgentOpen)}
             onOpenImport={() => setIsImportOpen(true)}
             onOpenExport={() => setIsExportOpen(true)}
@@ -206,18 +211,20 @@ export const App: React.FC = () => {
                     <SettingsPage />
                   </motion.div>
                 ) : (
-                  <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="absolute inset-0 h-full w-full bg-linen dark:bg-zinc-950">
-                    {viewMode === 'outline' && (
+                  <motion.div key={isRecallOpen ? 'recall' : viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="absolute inset-0 h-full w-full bg-linen dark:bg-zinc-950">
+                    {isRecallOpen && currentDoc ? (
+                      <RecallMode document={currentDoc} initialNodeId={selectedNodeId} onClose={() => setIsRecallOpen(false)} />
+                    ) : viewMode === 'outline' && (
                       <KeybindingSurface scope="outline" className="h-full">
                         <OutlineEditor />
                       </KeybindingSurface>
                     )}
-                    {viewMode === 'mindmap' && (
+                    {!isRecallOpen && viewMode === 'mindmap' && (
                       <KeybindingSurface scope="mindmap" className="h-full">
                         <MindMapView />
                       </KeybindingSurface>
                     )}
-                    {viewMode === 'split' && (
+                    {!isRecallOpen && viewMode === 'split' && (
                       <PanelGroup orientation="horizontal">
                         <Panel defaultSize={50} minSize={20}>
                           <KeybindingSurface scope="outline" className="h-full overflow-hidden border-r border-zinc-200/60 dark:border-zinc-800/60">
