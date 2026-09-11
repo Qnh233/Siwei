@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  BrainCircuit,
   Command as CommandIcon,
   FileInput,
   FileOutput,
@@ -27,6 +28,8 @@ interface AppHeaderProps {
   isAgentOpen: boolean
   isKnowledgeGraphOpen: boolean
   canOpenKnowledgeGraph: boolean
+  isRecallOpen: boolean
+  canOpenRecall: boolean
   taskSummaryLabel?: string | null
   onViewModeChange: (viewMode: ViewMode) => void
   onUndo: () => void
@@ -34,6 +37,7 @@ interface AppHeaderProps {
   onOpenSearch: () => void
   onOpenCommand: () => void
   onToggleKnowledgeGraph: () => void
+  onToggleRecall: () => void
   onToggleAgent: () => void
   onOpenImport: () => void
   onOpenExport: () => void
@@ -49,6 +53,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   isAgentOpen,
   isKnowledgeGraphOpen,
   canOpenKnowledgeGraph,
+  isRecallOpen,
+  canOpenRecall,
   taskSummaryLabel,
   onViewModeChange,
   onUndo,
@@ -56,6 +62,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenSearch,
   onOpenCommand,
   onToggleKnowledgeGraph,
+  onToggleRecall,
   onToggleAgent,
   onOpenImport,
   onOpenExport,
@@ -154,6 +161,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           aria-label="当前文档关系"
         >
           <Network size={15} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleRecall}
+          disabled={!canOpenRecall}
+          className={`btn-patch-light flex h-8 w-8 items-center justify-center rounded-md focus:outline-none disabled:cursor-not-allowed disabled:opacity-35 ${
+            isRecallOpen ? 'bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900' : ''
+          }`}
+          title="主动回忆"
+          aria-label="主动回忆"
+        >
+          <BrainCircuit size={15} />
         </button>
 
         <button
